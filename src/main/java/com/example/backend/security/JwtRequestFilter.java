@@ -9,9 +9,12 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Optional;
 
 @Component
 public class JwtRequestFilter extends OncePerRequestFilter {
@@ -26,7 +29,7 @@ public class JwtRequestFilter extends OncePerRequestFilter {
         final String requestURI = request.getRequestURI();
         System.out.println("Request URI: " + requestURI);
 
-        // استثناء المسارات التي لا تتطلب التحقق من التوكن
+        // ✅ Bypass authentication for specific endpoints
         if (requestURI.contains("/api/login") ||
                 requestURI.contains("/api/register") ||
                 requestURI.contains("/api/resetPassword")) {
@@ -35,18 +38,29 @@ public class JwtRequestFilter extends OncePerRequestFilter {
             return;
         }
 
-        final String authorizationHeader = request.getHeader("Authorization");
-
-        String email = null;
         String jwt = null;
+        String email = null;
 
-        // استخراج التوكن من الـ Header
+        // ✅ Try to extract token from Authorization header
+        final String authorizationHeader = request.getHeader("Authorization");
         if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
             jwt = authorizationHeader.substring(7);
-            email = jwtUtil.extractEmail(jwt);
+            email = jwtUtil.extractUsername(jwt);
+        } else {
+            // ✅ If token is not in header, try to extract from cookies
+            Cookie[] cookies = request.getCookies();
+            if (cookies != null) {
+                Optional<Cookie> jwtCookie = Arrays.stream(cookies)
+                        .filter(cookie -> "jwtToken".equals(cookie.getName()))
+                        .findFirst();
+                if (jwtCookie.isPresent()) {
+                    jwt = jwtCookie.get().getValue();
+                    email = jwtUtil.extractUsername(jwt);
+                }
+            }
         }
 
-        // تحقق من صحة التوكن وإعداد السياق الأمني
+        // ✅ Validate the token and set security context
         if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             if (jwtUtil.isTokenValid(jwt, email)) {
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
@@ -55,7 +69,7 @@ public class JwtRequestFilter extends OncePerRequestFilter {
                 SecurityContextHolder.getContext().setAuthentication(authToken);
                 System.out.println("JWT validated successfully for: " + email);
             } else {
-                System.out.println("Invalid JWT token for: " + email);
+                System.out.println("Invalid or expired JWT token for: " + email);
             }
         }
 

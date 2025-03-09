@@ -1,7 +1,5 @@
 package com.example.backend.entity;
 
-//import lombok.Data; /**/
-//@Data
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.data.annotation.Id;
@@ -23,4 +21,6 @@ public class UserEntity {
     private String email;
 
     private String password;
+
+    private String role; // New field for user role (e.g., "admin", "user")
 }

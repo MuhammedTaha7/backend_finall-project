@@ -56,7 +56,8 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
 
         configuration.addAllowedOrigin("http://13.49.225.86:3000"); // أضف الـ IP العام
-        configuration.addAllowedOrigin("http://localhost:3000"); // السماح بالأصل المطلوب
+        configuration.addAllowedOrigin("http://localhost:3000");
+        configuration.addAllowedOrigin("http://localhost:3005");// السماح بالأصل المطلوب
         configuration.addAllowedHeader("*"); // السماح بكل الرؤوس
         configuration.addAllowedMethod("*"); // السماح بكل الطرق
         configuration.setAllowCredentials(true); // السماح بإرسال ملفات تعريف الارتباط
