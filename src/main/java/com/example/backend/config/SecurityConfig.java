@@ -1,6 +1,6 @@
 package com.example.backend.config;
 
-import com.example.backend.security.JwtRequestFilter;
+import com.example.backend.common.security.JwtRequestFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -24,15 +24,18 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        // طباعة لتأكيد الوصول إلى إعدادات الأمان
         System.out.println("Security config accessed");
 
         http
-                .cors(cors -> cors.configurationSource(corsConfigurationSource())) // تمكين CORS باستخدام المصدر المعدل
-                .csrf(csrf -> csrf.disable()) // تعطيل CSRF
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/**").permitAll() // السماح بكل طلبات /api/*
-                        .anyRequest().authenticated() // طلب المصادقة لأي طلبات أخرى
+                        // Allow public endpoints without authentication
+                        .requestMatchers("/api/login", "/api/register", "/api/resetPassword").permitAll()
+                        .requestMatchers("/ws/**").permitAll() // WebSocket endpoints
+                        .requestMatchers("/ws/info").permitAll()
+                        .requestMatchers("/api/**").authenticated()
+                        .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
 
@@ -55,14 +58,14 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        configuration.addAllowedOrigin("http://13.49.225.86:3000"); // أضف الـ IP العام
+        configuration.addAllowedOrigin("http://13.49.225.86:3000");
         configuration.addAllowedOrigin("http://localhost:3000");
-        configuration.addAllowedHeader("*"); // السماح بكل الرؤوس
-        configuration.addAllowedMethod("*"); // السماح بكل الطرق
-        configuration.setAllowCredentials(true); // السماح بإرسال ملفات تعريف الارتباط
+        configuration.addAllowedHeader("*");
+        configuration.addAllowedMethod("*");
+        configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration); // تسجيل الإعدادات لكل المسارات
+        source.registerCorsConfiguration("/**", configuration);
         return source;
     }
 }
