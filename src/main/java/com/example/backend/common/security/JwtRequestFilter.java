@@ -38,9 +38,12 @@ public class JwtRequestFilter extends OncePerRequestFilter {
 
         final String requestURI = request.getRequestURI();
 
+        // --- UPDATED THIS SECTION ---
+        // If the request is for a public endpoint, skip the filter and pass it on.
         if (requestURI.contains("/api/login") ||
                 requestURI.contains("/api/register") ||
-                requestURI.contains("/api/resetPassword")) {
+                requestURI.contains("/api/resetPassword") ||
+                requestURI.contains("/api/dashboard")) { // <-- ADD THIS CONDITION
             chain.doFilter(request, response);
             return;
         }

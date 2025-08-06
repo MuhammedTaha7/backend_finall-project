@@ -7,6 +7,8 @@ import com.example.backend.eduSphere.entity.UserEntity;
 import lombok.NonNull;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 public interface UserService {
     LoginResponse authenticateUser(@NonNull LoginRequest loginRequest);
@@ -17,4 +19,8 @@ public interface UserService {
     UserEntity getUserByEmail(String email);
 
     UserEntity getUserById(String userId);
+
+    List<UserEntity> findUsersByRole(String role);
+
+    List<UserEntity> findUsersByIds(List<String> userIds);
 }
