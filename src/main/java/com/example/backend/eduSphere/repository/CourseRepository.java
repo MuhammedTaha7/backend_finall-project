@@ -13,7 +13,7 @@ import java.util.List;
 @Repository
 public interface CourseRepository extends MongoRepository<Course, String> {
     List<Course> findByDepartment(String department);
-    
-    // Finds all courses where the student's ID is in an enrollment list.
+
+    // Finds all courses where a student is enrolled in any academic year.
     List<Course> findByEnrollments_StudentIds(String studentId);
 }

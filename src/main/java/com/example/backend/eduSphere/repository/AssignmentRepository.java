@@ -19,7 +19,6 @@ public interface AssignmentRepository extends MongoRepository<Assignment, String
 
     // Finds all assignments for a given list of course names.
     List<Assignment> findByCourseIn(List<String> courseNames);
-
     // Finds all assignments created by a specific instructor.
     List<Assignment> findByInstructorId(String instructorId);
 }
