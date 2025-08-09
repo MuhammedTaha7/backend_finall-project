@@ -47,23 +47,17 @@ public class AuthController {
 
     @GetMapping("/auth/user")
     public ResponseEntity<AuthResponse> getUserData(Authentication authentication) {
-        System.out.println("🔍 AuthController - Authentication: " + authentication);
-
-        if (authentication == null || authentication.getName() == null) {
-            System.out.println("❌ No authentication found");
+        if (authentication == null || authentication.getPrincipal() == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(null);
         }
 
         try {
-            String userId = authentication.getName(); // This is now the userId from JWT filter
-            System.out.println("🔍 AuthController - UserID: " + userId);
-
-            // Get user by ID instead of email
-            UserEntity user = userService.getUserById(userId);
+            // --- FIX: Get the full UserEntity object directly from the principal ---
+            UserEntity user = (UserEntity) authentication.getPrincipal();
 
             return ResponseEntity.ok(
                     AuthResponse.builder()
-                            .id(userId)
+                            .id(user.getId()) // Use the getter from the object
                             .username(user.getUsername())
                             .email(user.getEmail())
                             .role(user.getRole())
@@ -73,7 +67,7 @@ public class AuthController {
             );
         } catch (Exception e) {
             System.out.println("❌ Error getting user data: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(null);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
     }
 

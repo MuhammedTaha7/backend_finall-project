@@ -2,9 +2,7 @@ package com.example.backend.common.security;
 
 import com.example.backend.eduSphere.entity.UserEntity;
 import com.example.backend.eduSphere.repository.UserRepository;
-import com.example.backend.eduSphere.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
@@ -28,64 +26,52 @@ public class JwtRequestFilter extends OncePerRequestFilter {
     @Autowired
     private UserRepository userRepository;
 
-    @Autowired
-    @Lazy
-    private UserService userService;
-
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
 
-        final String requestURI = request.getRequestURI();
-
-        // --- UPDATED THIS SECTION ---
-        // If the request is for a public endpoint, skip the filter and pass it on.
-        if (requestURI.contains("/api/login") ||
-                requestURI.contains("/api/register") ||
-                requestURI.contains("/api/resetPassword") ||
-                requestURI.contains("/api/dashboard")) { // <-- ADD THIS CONDITION
-            chain.doFilter(request, response);
-            return;
-        }
-
         String jwt = null;
-        String email = null;
+        String username = null;
 
+        // Try to extract token from Authorization header first
         final String authorizationHeader = request.getHeader("Authorization");
-
         if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
             jwt = authorizationHeader.substring(7);
-            email = jwtUtil.extractEmail(jwt);
         } else {
+            // If not in header, try to extract from cookie
             Cookie[] cookies = request.getCookies();
             if (cookies != null) {
                 for (Cookie cookie : cookies) {
                     if ("jwtToken".equals(cookie.getName())) {
                         jwt = cookie.getValue();
-                        try {
-                            email = jwtUtil.extractEmail(jwt);
-                            break;
-                        } catch (Exception ignored) {}
+                        break;
                     }
                 }
             }
         }
 
-        if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+        if (jwt != null) {
             try {
-                String username = jwtUtil.extractUsername(jwt);
-                if (jwtUtil.isTokenValid(jwt, username)) {
-                    Optional<UserEntity> userOptional = userRepository.findByEmail(email);
-                    if (userOptional.isPresent()) {
-                        String userId = userOptional.get().getId();
+                username = jwtUtil.extractUsername(jwt);
+            } catch (Exception e) {
+                // Token is invalid or expired, proceed without authentication
+            }
+        }
 
-                        UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                                userId, null, null);
-                        authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                        SecurityContextHolder.getContext().setAuthentication(authToken);
-                    }
+        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            Optional<UserEntity> userOptional = userRepository.findByUsername(username);
+
+            if (userOptional.isPresent()) {
+                UserEntity userDetails = userOptional.get();
+
+                if (jwtUtil.isTokenValid(jwt, userDetails.getUsername())) {
+                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                            userDetails, null, userDetails.getAuthorities());
+
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
-            } catch (Exception ignored) {}
+            }
         }
 
         chain.doFilter(request, response);

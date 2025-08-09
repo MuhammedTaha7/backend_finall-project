@@ -3,6 +3,7 @@ package com.example.backend.common.security;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.MalformedJwtException;
@@ -16,7 +17,8 @@ import java.util.function.Function;
 @Component
 public class JwtUtil {
 
-    private static final Key SECRET_KEY = Keys.secretKeyFor(SignatureAlgorithm.HS256);
+    private static final String SECRET_STRING = "dGhpc2lzYXNlY3JldGtleWZvcm15c3ByaW5nYm9vdGFwcGxpY2F0aW9uZm9yZWR1c3BoZXJlMjAyNA==";
+    private static final Key SECRET_KEY = Keys.hmacShaKeyFor(Decoders.BASE64.decode(SECRET_STRING));
 
     // ✅ Generate JWT Token with username, email, and role
     public String generateToken(String username, String email, String role) {

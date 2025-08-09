@@ -16,4 +16,7 @@ public interface CourseRepository extends MongoRepository<Course, String> {
 
     // Finds all courses where a student is enrolled in any academic year.
     List<Course> findByEnrollments_StudentIds(String studentId);
+
+    // Finds all courses taught by a specific lecturer
+    List<Course> findByLecturerId(String lecturerId);
 }

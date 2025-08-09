@@ -15,6 +15,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.http.HttpMethod;
 
 @Configuration
 @EnableWebSecurity
@@ -25,17 +26,27 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        System.out.println("Security config accessed - DEVELOPMENT MODE: ALL REQUESTS PERMITTED");
-
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
-                // --- SIMPLIFIED DEVELOPMENT RULE ---
-                // This rule allows ALL requests to the entire application without any security checks.
-                // This is great for development but should be changed for a live application.
-                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+                .authorizeHttpRequests(auth -> auth
+                        // 1. Allow public access to register and login endpoints
+                        .requestMatchers("/api/register", "/api/login").permitAll()
+
+                        // 2. Admin-only endpoints (course management and enrollment operations)
+                        // Using hasAuthority instead of hasRole for more explicit control
+                        .requestMatchers(HttpMethod.POST, "/api/courses").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/courses/**").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/courses/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/courses/*/enroll").hasAuthority("ROLE_ADMIN")
+
+                        // 3. Read access to courses - allow all authenticated users
+                        .requestMatchers(HttpMethod.GET, "/api/courses/**").authenticated()
+
+                        // 4. All other requests require authentication
+                        .anyRequest().authenticated()
+                )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                // We still keep the JWT filter so that if a token IS provided, it can be processed.
                 .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

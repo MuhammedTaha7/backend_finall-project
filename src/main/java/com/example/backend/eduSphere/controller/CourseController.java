@@ -1,10 +1,15 @@
 package com.example.backend.eduSphere.controller;
 
-import com.example.backend.eduSphere.dto.request.EnrollmentRequest; // --- ADD THIS IMPORT ---
+import com.example.backend.eduSphere.dto.request.EnrollmentRequest;
+import com.example.backend.eduSphere.dto.request.UnenrollmentRequest;
+import com.example.backend.eduSphere.dto.response.CourseDetailsResponse;
+import com.example.backend.eduSphere.dto.response.CourseSummaryResponse;
 import com.example.backend.eduSphere.entity.Course;
 import com.example.backend.eduSphere.service.CourseService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -26,21 +31,25 @@ public class CourseController {
     }
 
     /**
-     * GET /api/courses : Get all courses.
+     * GET /api/courses : Gets a list of courses based on the logged-in user's role.
      */
     @GetMapping
-    public List<Course> getAllCourses() {
-        return courseService.findAllCourses();
+    public List<CourseSummaryResponse> getAllCourses(@AuthenticationPrincipal UserDetails userDetails) {
+        return courseService.findAllCoursesForUser(userDetails);
     }
 
     /**
      * GET /api/courses/{id} : Get a single course by its ID.
      */
     @GetMapping("/{id}")
-    public ResponseEntity<Course> getCourseById(@PathVariable String id) {
-        return courseService.findCourseById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<CourseDetailsResponse> getCourseById(@PathVariable String id) {
+        try {
+            CourseDetailsResponse courseDetails = courseService.findCourseDetailsById(id);
+            return ResponseEntity.ok(courseDetails);
+        } catch (RuntimeException e) {
+            // This will catch the "Course not found" exception from the service
+            return ResponseEntity.notFound().build();
+        }
     }
 
     /**
@@ -89,7 +98,26 @@ public class CourseController {
             Course updatedCourse = courseService.enrollStudent(courseId, enrollmentRequest);
             return ResponseEntity.ok(updatedCourse);
         } catch (RuntimeException e) {
-            // Catches exceptions like "Course not found"
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    /**
+     * DELETE /api/courses/{courseId}/enrollments : Unenroll one or more students from a course.
+     */
+    @DeleteMapping("/{courseId}/enrollments")
+    public ResponseEntity<Course> unenrollStudents(
+            @PathVariable String courseId,
+            @RequestBody UnenrollmentRequest request) {
+        try {
+            if (request == null || request.getStudentIds() == null || request.getStudentIds().isEmpty()) {
+                return ResponseEntity.badRequest().build();
+            }
+
+            Course updatedCourse = courseService.unenrollStudents(courseId, request.getStudentIds());
+            return ResponseEntity.ok(updatedCourse);
+
+        } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
     }
