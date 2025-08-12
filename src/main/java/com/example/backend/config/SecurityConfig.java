@@ -42,6 +42,7 @@ public class SecurityConfig {
 
                         // 3. Read access to courses - allow all authenticated users
                         .requestMatchers(HttpMethod.GET, "/api/courses/**").authenticated()
+                        .requestMatchers("/api/messages/**").authenticated()
 
                         // 4. All other requests require authentication
                         .anyRequest().authenticated()
