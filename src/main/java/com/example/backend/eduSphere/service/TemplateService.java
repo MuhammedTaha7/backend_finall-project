@@ -12,11 +12,15 @@ public interface TemplateService {
 
     TemplateResponse getTemplateById(String templateId);
 
-    TemplateResponse createTemplate(TemplateRequest templateRequest);
+    // 🆕 UPDATED: Added creatorId
+    TemplateResponse createTemplate(TemplateRequest templateRequest, String creatorId);
 
-    TemplateResponse updateTemplate(String templateId, TemplateRequest templateRequest);
+    // 🆕 UPDATED: Added updaterId
+    TemplateResponse updateTemplate(String templateId, TemplateRequest templateRequest, String updaterId);
 
-    void deleteTemplate(String templateId);
+    // 🆕 UPDATED: Added deleterId
+    void deleteTemplate(String templateId, String deleterId);
 
-    void useTemplate(String templateId, UseTemplateRequest useTemplateRequest);
+    // 🆕 UPDATED: Added creatorId and creatorName
+    void useTemplate(String templateId, UseTemplateRequest useTemplateRequest, String creatorId, String creatorName);
 }

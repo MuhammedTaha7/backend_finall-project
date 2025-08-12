@@ -21,7 +21,7 @@ public class Template {
 
     @Id
     private String id;
-
+    private String creatorId;
     private String name;
     private String category;
     private String subject;

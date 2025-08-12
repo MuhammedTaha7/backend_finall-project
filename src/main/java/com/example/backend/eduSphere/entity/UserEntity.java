@@ -19,7 +19,7 @@ import java.util.Map;
 @Getter
 @Setter
 @Document(collection = "users")
-public class UserEntity implements UserDetails { // --- 1. IMPLEMENTS UserDetails ---
+public class UserEntity implements UserDetails {
 
     @Id
     private String id;

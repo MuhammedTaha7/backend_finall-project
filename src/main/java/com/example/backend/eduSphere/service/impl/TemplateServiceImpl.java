@@ -1,6 +1,7 @@
 package com.example.backend.eduSphere.service.impl;
 
 import com.example.backend.common.exceptions.ResourceNotFoundException;
+import com.example.backend.eduSphere.dto.request.AnnouncementRequest;
 import com.example.backend.eduSphere.dto.request.TemplateRequest;
 import com.example.backend.eduSphere.dto.request.UseTemplateRequest;
 import com.example.backend.eduSphere.dto.response.TemplateResponse;
@@ -8,8 +9,10 @@ import com.example.backend.eduSphere.entity.Template;
 import com.example.backend.eduSphere.entity.UserEntity;
 import com.example.backend.eduSphere.repository.TemplateRepository;
 import com.example.backend.eduSphere.repository.UserRepository;
+import com.example.backend.eduSphere.service.AnnouncementService;
 import com.example.backend.eduSphere.service.TemplateService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -17,15 +20,17 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Service
 public class TemplateServiceImpl implements TemplateService {
 
     @Autowired
     private TemplateRepository templateRepository;
-
     @Autowired
     private UserRepository userRepository;
+    @Autowired
+    private AnnouncementService announcementService;
 
     @Override
     public List<TemplateResponse> getAllTemplates() {
@@ -43,7 +48,7 @@ public class TemplateServiceImpl implements TemplateService {
     }
 
     @Override
-    public TemplateResponse createTemplate(TemplateRequest templateRequest) {
+    public TemplateResponse createTemplate(TemplateRequest templateRequest, String creatorId) {
         Template template = new Template();
         template.setName(templateRequest.getName());
         template.setCategory(templateRequest.getCategory());
@@ -51,8 +56,8 @@ public class TemplateServiceImpl implements TemplateService {
         template.setContent(templateRequest.getContent());
         template.setTargetAudience(templateRequest.getTargetAudience());
         template.setStatus(templateRequest.getStatus());
+        template.setCreatorId(creatorId);
 
-        // Extract variables from content and save them
         template.setVariables(extractVariablesFromContent(templateRequest.getContent()));
 
         Template savedTemplate = templateRepository.save(template);
@@ -60,9 +65,13 @@ public class TemplateServiceImpl implements TemplateService {
     }
 
     @Override
-    public TemplateResponse updateTemplate(String templateId, TemplateRequest templateRequest) {
+    public TemplateResponse updateTemplate(String templateId, TemplateRequest templateRequest, String updaterId) {
         Template existingTemplate = templateRepository.findById(templateId)
                 .orElseThrow(() -> new ResourceNotFoundException("Template not found with id " + templateId));
+
+        if (!existingTemplate.getCreatorId().equals(updaterId)) {
+            throw new AccessDeniedException("You do not have permission to update this template.");
+        }
 
         existingTemplate.setName(templateRequest.getName());
         existingTemplate.setCategory(templateRequest.getCategory());
@@ -71,7 +80,6 @@ public class TemplateServiceImpl implements TemplateService {
         existingTemplate.setTargetAudience(templateRequest.getTargetAudience());
         existingTemplate.setStatus(templateRequest.getStatus());
 
-        // Update variables from new content
         existingTemplate.setVariables(extractVariablesFromContent(templateRequest.getContent()));
 
         Template updatedTemplate = templateRepository.save(existingTemplate);
@@ -79,36 +87,43 @@ public class TemplateServiceImpl implements TemplateService {
     }
 
     @Override
-    public void deleteTemplate(String templateId) {
+    public void deleteTemplate(String templateId, String deleterId) {
+        Template existingTemplate = templateRepository.findById(templateId)
+                .orElseThrow(() -> new ResourceNotFoundException("Template not found with id " + templateId));
+
+        if (!existingTemplate.getCreatorId().equals(deleterId)) {
+            throw new AccessDeniedException("You do not have permission to delete this template.");
+        }
+
         templateRepository.deleteById(templateId);
     }
 
+    // 🆕 UPDATED: This method now uses recipientIds from the request
     @Override
-    public void useTemplate(String templateId, UseTemplateRequest useTemplateRequest) {
+    public void useTemplate(String templateId, UseTemplateRequest useTemplateRequest, String creatorId, String creatorName) {
         Template template = templateRepository.findById(templateId)
                 .orElseThrow(() -> new ResourceNotFoundException("Template not found with id " + templateId));
 
-        // Get the numerical role code from the template
-        String roleCode = template.getTargetAudience();
+        // Find users based on the recipient IDs from the request
+        List<UserEntity> targetUsers = userRepository.findAllById(useTemplateRequest.getRecipientIds());
 
-        // Find all users in the target audience based on the role code
-        List<UserEntity> targetUsers = userRepository.findByRole(roleCode);
-
-        // For each user, replace variables and send the message
         for (UserEntity user : targetUsers) {
+            String personalizedSubject = replaceVariables(template.getSubject(), useTemplateRequest.getVariableValues(), user);
             String personalizedContent = replaceVariables(template.getContent(), useTemplateRequest.getVariableValues(), user);
 
-            // This is where you would send the message.
-            // For now, we'll just print it to the console.
-            System.out.println("--- Sending Personalized Message ---");
-            System.out.println("To: " + user.getName() + " (" + user.getEmail() + ")");
-            System.out.println("Subject: " + replaceVariables(template.getSubject(), useTemplateRequest.getVariableValues(), user));
-            System.out.println("Content:\n" + personalizedContent);
-            System.out.println("------------------------------------");
+            AnnouncementRequest announcementRequest = new AnnouncementRequest();
+            announcementRequest.setTitle(personalizedSubject);
+            announcementRequest.setContent(personalizedContent);
+            announcementRequest.setPriority("medium");
+
+            // The template sends to a list of specific users, so the type should be 'personal'
+            announcementRequest.setTargetAudienceType("personal");
+            announcementRequest.setTargetUserId(user.getId());
+
+            announcementService.createAnnouncement(announcementRequest, creatorId, creatorName);
         }
     }
 
-    // Helper method to extract variables from content, e.g., "Hi {name}" -> "name"
     private List<String> extractVariablesFromContent(String content) {
         if (content == null) {
             return List.of();
@@ -121,7 +136,6 @@ public class TemplateServiceImpl implements TemplateService {
                 .collect(Collectors.toList());
     }
 
-    // Helper method to replace variables in content, e.g., "Hi {name}" -> "Hi John"
     private String replaceVariables(String content, List<UseTemplateRequest.VariableValue> variableValues, UserEntity user) {
         String result = content;
         for (UseTemplateRequest.VariableValue var : variableValues) {
@@ -130,7 +144,6 @@ public class TemplateServiceImpl implements TemplateService {
             result = result.replace(placeholder, value);
         }
 
-        // Also replace special user-related variables
         result = result.replace("{name}", user.getName());
         result = result.replace("{email}", user.getEmail());
 
@@ -147,6 +160,7 @@ public class TemplateServiceImpl implements TemplateService {
                 template.getVariables(),
                 template.getTargetAudience(),
                 template.getStatus(),
+                template.getCreatorId(),
                 template.getCreatedAt(),
                 template.getUpdatedAt()
         );

@@ -3,6 +3,7 @@ package com.example.backend.eduSphere.controller;
 import com.example.backend.eduSphere.entity.UserEntity;
 import com.example.backend.eduSphere.service.UserService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -31,6 +32,7 @@ public class UserController {
      * @return A list of users with the specified role.
      */
     @GetMapping("/role/{role}")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')") // Only an admin should be able to do this
     public ResponseEntity<List<UserEntity>> getUsersByRole(@PathVariable String role) {
         List<UserEntity> users = userService.findUsersByRole(role);
         return ResponseEntity.ok(users);

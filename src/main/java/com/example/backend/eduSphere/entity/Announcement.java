@@ -43,4 +43,6 @@ public class Announcement {
     private String targetDepartment;
     private String targetCourseId;
     private Integer targetAcademicYear;
+
+    private String targetUserId;
 }

@@ -22,6 +22,7 @@ public class TemplateResponse {
     private List<String> variables;
     private String targetAudience;
     private String status;
+    private String creatorId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

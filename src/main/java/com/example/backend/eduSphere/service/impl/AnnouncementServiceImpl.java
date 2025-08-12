@@ -5,11 +5,7 @@ import com.example.backend.eduSphere.dto.request.AnnouncementRequest;
 import com.example.backend.eduSphere.dto.response.AnnouncementResponse;
 import com.example.backend.eduSphere.dto.response.CourseDto;
 import com.example.backend.eduSphere.dto.response.DepartmentDto;
-import com.example.backend.eduSphere.entity.Announcement;
-import com.example.backend.eduSphere.entity.Course;
-import com.example.backend.eduSphere.entity.Department;
-import com.example.backend.eduSphere.entity.UserEntity;
-import com.example.backend.eduSphere.entity.YearlyEnrollment;
+import com.example.backend.eduSphere.entity.*;
 import com.example.backend.eduSphere.repository.AnnouncementRepository;
 import com.example.backend.eduSphere.repository.CourseRepository;
 import com.example.backend.eduSphere.repository.DepartmentRepository;
@@ -24,6 +20,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 public class AnnouncementServiceImpl implements AnnouncementService {
@@ -39,69 +37,43 @@ public class AnnouncementServiceImpl implements AnnouncementService {
 
     @Override
     public List<AnnouncementResponse> getAnnouncementsForUser(String userId, String userRole) {
-        List<Announcement> announcements;
+        Set<Announcement> announcementsSet = new HashSet<>();
 
         if ("1100".equals(userRole)) { // Admin
-            announcements = announcementRepository.findAll();
+            announcementsSet.addAll(announcementRepository.findAll());
         } else if ("1200".equals(userRole)) { // Lecturer
-            // 🆕 FIX: Get announcements created by the lecturer AND announcements targeted to them or their courses
-            Set<Announcement> announcementsSet = new HashSet<>();
+            announcementsSet.addAll(announcementRepository.findByCreatorIdOrderByCreatedAtDesc(userId));
 
-            // 1. Get announcements created by the lecturer
-            List<Announcement> createdAnnouncements = announcementRepository.findByCreatorIdOrderByCreatedAtDesc(userId);
-            announcementsSet.addAll(createdAnnouncements);
-
-            // 2. Get announcements targeted to the lecturer or their courses, but not created by them
             List<String> lecturerCourses = courseRepository.findByLecturerId(userId).stream()
                     .map(Course::getId)
                     .collect(Collectors.toList());
-            List<Announcement> targetedAnnouncements = announcementRepository.findTargetedAnnouncementsForLecturer(userId, lecturerCourses);
-            announcementsSet.addAll(targetedAnnouncements);
+            announcementsSet.addAll(announcementRepository.findByTargetAudienceTypeAndTargetCourseIdIn("course", lecturerCourses));
 
-            announcements = announcementsSet.stream().collect(Collectors.toList());
-        } else { // Student
+            announcementsSet.addAll(announcementRepository.findByTargetAudienceType("all"));
+            announcementsSet.addAll(announcementRepository.findByTargetAudienceType("lecturer"));
+            announcementsSet.addAll(announcementRepository.findByTargetUserId(userId));
+        } else if ("1300".equals(userRole)) { // Student
             List<Course> enrolledCourses = courseRepository.findByEnrollments_StudentIds(userId);
-            List<Announcement> baseAnnouncements = announcementRepository.findAnnouncementsForStudentBase();
 
-            announcements = baseAnnouncements.stream()
-                    .filter(announcement -> {
-                        String targetAudienceType = announcement.getTargetAudienceType();
+            announcementsSet.addAll(announcementRepository.findByTargetAudienceType("all"));
+            announcementsSet.addAll(announcementRepository.findByTargetAudienceType("student"));
 
-                        if ("all".equals(targetAudienceType) || "student".equals(targetAudienceType)) {
-                            return true;
-                        }
+            List<String> enrolledCourseIds = enrolledCourses.stream().map(Course::getId).collect(Collectors.toList());
+            if (!enrolledCourseIds.isEmpty()) {
+                announcementsSet.addAll(announcementRepository.findByTargetAudienceTypeAndTargetCourseIdIn("course", enrolledCourseIds));
+            }
 
-                        if ("course".equals(targetAudienceType)) {
-                            String targetCourseId = announcement.getTargetCourseId();
-                            Integer targetAcademicYear = announcement.getTargetAcademicYear();
-
-                            if (targetCourseId == null || targetAcademicYear == null) {
-                                return false;
-                            }
-
-                            return enrolledCourses.stream()
-                                    .anyMatch(course ->
-                                            course.getId().equals(targetCourseId) &&
-                                                    course.getEnrollments().stream().anyMatch(enrollment ->
-                                                            enrollment.getStudentIds().contains(userId) &&
-                                                                    enrollment.getAcademicYear() == targetAcademicYear
-                                                    )
-                                    );
-                        }
-
-                        return false;
-                    })
-                    .collect(Collectors.toList());
+            announcementsSet.addAll(announcementRepository.findByTargetUserId(userId));
         }
 
-        return announcements.stream()
+        return announcementsSet.stream()
                 .map(this::mapToResponse)
+                .sorted((a1, a2) -> a2.getCreatedAt().compareTo(a1.getCreatedAt()))
                 .collect(Collectors.toList());
     }
 
     @Override
     public List<AnnouncementResponse> getMyAnnouncements(String userId) {
-        // This is for lecturers to see only the announcements they created
         List<Announcement> announcements = announcementRepository.findByCreatorIdOrderByCreatedAtDesc(userId);
         return announcements.stream()
                 .map(this::mapToResponse)
@@ -118,7 +90,6 @@ public class AnnouncementServiceImpl implements AnnouncementService {
     @Override
     public AnnouncementResponse createAnnouncement(AnnouncementRequest announcementRequest, String creatorId, String creatorName) {
         Announcement announcement = new Announcement();
-        // Map fields from DTO to entity
         announcement.setTitle(announcementRequest.getTitle());
         announcement.setContent(announcementRequest.getContent());
         announcement.setPriority(announcementRequest.getPriority());
@@ -127,12 +98,11 @@ public class AnnouncementServiceImpl implements AnnouncementService {
         announcement.setCreatorName(creatorName);
         announcement.setExpiryDate(announcementRequest.getExpiryDate());
         announcement.setScheduledDate(announcementRequest.getScheduledDate());
-
-        // Handle new targeting fields
         announcement.setTargetAudienceType(announcementRequest.getTargetAudienceType());
         announcement.setTargetDepartment(announcementRequest.getTargetDepartment());
         announcement.setTargetCourseId(announcementRequest.getTargetCourseId());
         announcement.setTargetAcademicYear(announcementRequest.getTargetAcademicYear());
+        announcement.setTargetUserId(announcementRequest.getTargetUserId());
 
         Announcement savedAnnouncement = announcementRepository.save(announcement);
         return mapToResponse(savedAnnouncement);
@@ -157,8 +127,7 @@ public class AnnouncementServiceImpl implements AnnouncementService {
         existingAnnouncement.setTargetDepartment(announcementRequest.getTargetDepartment());
         existingAnnouncement.setTargetCourseId(announcementRequest.getTargetCourseId());
         existingAnnouncement.setTargetAcademicYear(announcementRequest.getTargetAcademicYear());
-
-        // We only update the `updatedAt` field for a simple edit
+        existingAnnouncement.setTargetUserId(announcementRequest.getTargetUserId());
         existingAnnouncement.setUpdatedAt(LocalDateTime.now());
 
         Announcement updatedAnnouncement = announcementRepository.save(existingAnnouncement);
@@ -170,15 +139,12 @@ public class AnnouncementServiceImpl implements AnnouncementService {
         Announcement existingAnnouncement = announcementRepository.findById(announcementId)
                 .orElseThrow(() -> new ResourceNotFoundException("Original announcement not found with id " + announcementId));
 
-        // Security check: Only admin or the original creator can use it as a template
         if (!"1100".equals(userRole) && !existingAnnouncement.getCreatorId().equals(creatorId)) {
             throw new AccessDeniedException("You do not have permission to use this announcement as a template.");
         }
 
-        // Create a brand new announcement entity
         Announcement newAnnouncement = new Announcement();
 
-        // Map fields from the new request
         newAnnouncement.setTitle(newAnnouncementRequest.getTitle());
         newAnnouncement.setContent(newAnnouncementRequest.getContent());
         newAnnouncement.setPriority(newAnnouncementRequest.getPriority());
@@ -189,8 +155,8 @@ public class AnnouncementServiceImpl implements AnnouncementService {
         newAnnouncement.setTargetDepartment(newAnnouncementRequest.getTargetDepartment());
         newAnnouncement.setTargetCourseId(newAnnouncementRequest.getTargetCourseId());
         newAnnouncement.setTargetAcademicYear(newAnnouncementRequest.getTargetAcademicYear());
+        newAnnouncement.setTargetUserId(newAnnouncementRequest.getTargetUserId());
 
-        // Set new creator and creation date
         newAnnouncement.setCreatorId(creatorId);
         newAnnouncement.setCreatorName(creatorName);
         newAnnouncement.setCreatedAt(LocalDateTime.now());
@@ -205,7 +171,6 @@ public class AnnouncementServiceImpl implements AnnouncementService {
         Announcement announcement = announcementRepository.findById(announcementId)
                 .orElseThrow(() -> new ResourceNotFoundException("Announcement not found with id " + announcementId));
 
-        // Security check: Only admin or the original creator can delete
         if (!"1100".equals(userRole) && !announcement.getCreatorId().equals(deleterId)) {
             throw new AccessDeniedException("You do not have permission to delete this announcement.");
         }
@@ -219,14 +184,13 @@ public class AnnouncementServiceImpl implements AnnouncementService {
             List<Department> departments = departmentRepository.findAll();
             return departments.stream().map(d -> new DepartmentDto(d.getName())).collect(Collectors.toList());
         } else if ("1200".equals(userRole)) { // Lecturer
-            // Find unique departments for courses taught by the lecturer
             List<String> departmentNames = courseRepository.findByLecturerId(userId).stream()
                     .map(Course::getDepartment)
                     .distinct()
                     .collect(Collectors.toList());
             return departmentNames.stream().map(DepartmentDto::new).collect(Collectors.toList());
         }
-        return List.of(); // Should not happen with security
+        return List.of();
     }
 
     @Override
@@ -235,14 +199,12 @@ public class AnnouncementServiceImpl implements AnnouncementService {
             List<Course> courses = courseRepository.findByDepartment(departmentName);
             return courses.stream().map(this::mapToCourseDto).collect(Collectors.toList());
         } else if ("1200".equals(userRole)) { // Lecturer
-            // Find courses taught by the lecturer in the specific department
             List<Course> courses = courseRepository.findByLecturerIdAndDepartment(userId, departmentName);
             return courses.stream().map(this::mapToCourseDto).collect(Collectors.toList());
         }
-        return List.of(); // Should not happen with security
+        return List.of();
     }
 
-    // Helper method to convert Announcement entity to DTO
     private AnnouncementResponse mapToResponse(Announcement announcement) {
         return new AnnouncementResponse(
                 announcement.getId(),
@@ -259,11 +221,11 @@ public class AnnouncementServiceImpl implements AnnouncementService {
                 announcement.getTargetAudienceType(),
                 announcement.getTargetDepartment(),
                 announcement.getTargetCourseId(),
-                announcement.getTargetAcademicYear()
+                announcement.getTargetAcademicYear(),
+                announcement.getTargetUserId()
         );
     }
 
-    // Helper method to convert Course entity to DTO
     private CourseDto mapToCourseDto(Course course) {
         return new CourseDto(course.getId(), course.getName(), course.getCode());
     }

@@ -17,6 +17,8 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.http.HttpMethod;
 
+import static org.springframework.security.config.Customizer.withDefaults;
+
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
@@ -33,16 +35,20 @@ public class SecurityConfig {
                         // 1. Allow public access to register and login endpoints
                         .requestMatchers("/api/register", "/api/login").permitAll()
 
+                        // 🆕 ADDED: Explicitly define a rule for templates
+//                        .requestMatchers("/api/templates/**").hasAuthority("ROLE_ADMIN")
+
                         // 2. Admin-only endpoints (course management and enrollment operations)
-                        // Using hasAuthority instead of hasRole for more explicit control
                         .requestMatchers(HttpMethod.POST, "/api/courses").hasAuthority("ROLE_ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/courses/**").hasAuthority("ROLE_ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/courses/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/courses/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/courses/*/enroll").hasAuthority("ROLE_ADMIN")
 
-                        // 3. Read access to courses - allow all authenticated users
+                        // 3. Read access to courses and messages - allow all authenticated users
                         .requestMatchers(HttpMethod.GET, "/api/courses/**").authenticated()
-                        .requestMatchers("/api/messages/**").authenticated()
+                                .requestMatchers("/api/messages/**").authenticated()
+                                .requestMatchers("/api/calendar/**").authenticated()
+
 
                         // 4. All other requests require authentication
                         .anyRequest().authenticated()

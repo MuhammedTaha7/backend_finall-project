@@ -9,21 +9,12 @@ import java.util.List;
 
 @Repository
 public interface AnnouncementRepository extends MongoRepository<Announcement, String> {
-    // 🆕 This query is now for students only
-    @Query("{$or: ["
-            + "{'targetAudienceType': 'all'},"
-            + "{'targetAudienceType': 'student'},"
-            + "{'targetAudienceType': 'course'}"
-            + "]}")
-    List<Announcement> findAnnouncementsForStudentBase();
-
-    // 🆕 This is the new query to fetch announcements for a lecturer, excluding those they created themselves
-    @Query("{$or: ["
-            + "{'targetAudienceType': 'all', 'creatorId': {$ne: ?0}},"
-            + "{'targetAudienceType': 'lecturer', 'creatorId': {$ne: ?0}},"
-            + "{'targetAudienceType': 'course', 'targetCourseId': {$in: ?1}}"
-            + "]}")
-    List<Announcement> findTargetedAnnouncementsForLecturer(String userId, List<String> courseIds);
 
     List<Announcement> findByCreatorIdOrderByCreatedAtDesc(String creatorId);
+
+    List<Announcement> findByTargetUserId(String targetUserId);
+
+    List<Announcement> findByTargetAudienceType(String targetAudienceType);
+
+    List<Announcement> findByTargetAudienceTypeAndTargetCourseIdIn(String targetAudienceType, List<String> targetCourseIds);
 }

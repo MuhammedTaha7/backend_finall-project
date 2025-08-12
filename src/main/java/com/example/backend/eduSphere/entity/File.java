@@ -9,6 +9,7 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 @Setter
@@ -43,4 +44,6 @@ public class File {
     @CreatedDate
     private LocalDateTime uploadDate;
     private int downloadCount;
+
+    private List<String> recipientIds;
 }

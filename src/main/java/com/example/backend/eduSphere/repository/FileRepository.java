@@ -10,12 +10,12 @@ import java.util.List;
 @Repository
 public interface FileRepository extends MongoRepository<File, String> {
 
-    // New simplified method to fetch a base list for service-side filtering
     @Query("{$or: ["
             + "{'accessType': 'public'},"
             + "{'accessType': 'students'},"
             + "{'accessType': 'lecturers'},"
-            + "{'accessType': 'course'}"
+            + "{'accessType': 'course'},"
+            + "{'accessType': 'personal'}" // Add the new personal access type
             + "]}")
     List<File> findFilesForBaseFiltering();
 

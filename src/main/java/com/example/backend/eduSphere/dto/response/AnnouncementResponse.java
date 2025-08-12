@@ -29,4 +29,6 @@ public class AnnouncementResponse {
     private String targetDepartment;
     private String targetCourseId;
     private Integer targetAcademicYear;
+    private String targetUserId;
+
 }

@@ -36,7 +36,6 @@ public class FileServiceImpl implements FileService {
 
     @Override
     public FileResponse uploadFileWithMetadata(MultipartFile file, FileUploadRequest fileMetadata, String uploaderId, String uploaderName) {
-        // ... (this method remains the same) ...
         ResponseEntity<Map<String, String>> uploadResponse = fileUploadController.uploadFile("edusphere", "file", file);
 
         if (!uploadResponse.getStatusCode().is2xxSuccessful() || uploadResponse.getBody() == null) {
@@ -66,6 +65,11 @@ public class FileServiceImpl implements FileService {
         fileEntity.setAccessType(fileMetadata.getAccessType());
         fileEntity.setAccessBy(fileMetadata.getAccessBy());
         fileEntity.setAccessValue(fileMetadata.getAccessValue());
+
+        // 🆕 NEW: Save recipientIds if they exist
+        if ("personal".equals(fileMetadata.getAccessType())) {
+            fileEntity.setRecipientIds(fileMetadata.getRecipientIds());
+        }
 
         File savedFile = fileRepository.save(fileEntity);
 
@@ -104,6 +108,11 @@ public class FileServiceImpl implements FileService {
                             return true;
                         }
 
+                        // 🆕 NEW: Check for personal access
+                        if ("personal".equals(accessType) && file.getRecipientIds() != null && file.getRecipientIds().contains(userId)) {
+                            return true;
+                        }
+
                         return false;
                     })
                     .collect(Collectors.toList());
@@ -134,6 +143,11 @@ public class FileServiceImpl implements FileService {
                         }
 
                         if ("course".equals(accessType) && studentCourseIds.contains(accessValue)) {
+                            return true;
+                        }
+
+                        // 🆕 NEW: Check for personal access
+                        if ("personal".equals(accessType) && file.getRecipientIds() != null && file.getRecipientIds().contains(userId)) {
                             return true;
                         }
 

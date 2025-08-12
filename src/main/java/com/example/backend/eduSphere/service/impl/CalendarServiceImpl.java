@@ -46,9 +46,12 @@ public class CalendarServiceImpl implements CalendarService {
     @Override
     public List<CalendarEventDto> getCalendarEventsForUser(LocalDate requestedDate, CalendarFilterDto filters) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String userId = (String) authentication.getPrincipal();
-        UserEntity user = userService.getUserById(userId);
 
+        // ✅ Correct way: cast to your UserEntity
+        UserEntity user = (UserEntity) authentication.getPrincipal();
+        String userId = user.getId();
+
+        // You can now use `user` or `userId`
         LocalDate weekStartDate = requestedDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY));
         LocalDate weekEndDate = weekStartDate.plusDays(6);
 
@@ -60,7 +63,7 @@ public class CalendarServiceImpl implements CalendarService {
                 String learningGroupId = "Nursing_Year1_2025";
                 eventRules.addAll(eventRepository.findByLearningGroupId(learningGroupId));
 
-                List<Course> enrolledCourses = courseRepository.findByEnrollments_StudentIds(user.getId());
+                List<Course> enrolledCourses = courseRepository.findByEnrollments_StudentIds(userId);
                 List<String> courseIds = enrolledCourses.stream().map(Course::getId).collect(Collectors.toList());
                 if (!courseIds.isEmpty()) {
                     assignments.addAll(assignmentRepository.findByCourseIn(courseIds));
@@ -68,13 +71,12 @@ public class CalendarServiceImpl implements CalendarService {
                 break;
 
             case "1200": // Lecturer Role
-                eventRules.addAll(eventRepository.findByInstructorId(user.getId()));
-                assignments.addAll(assignmentRepository.findByInstructorId(user.getId()));
+                eventRules.addAll(eventRepository.findByInstructorId(userId));
+                assignments.addAll(assignmentRepository.findByInstructorId(userId));
                 break;
 
-            case "1100": // Admin Role - This is where we use the filters
+            case "1100": // Admin Role
             default:
-                // ✅ Build the dynamic query for Events using MongoTemplate
                 Query eventQuery = new Query();
                 if (filters.getCourseId() != null && !filters.getCourseId().isEmpty()) {
                     eventQuery.addCriteria(Criteria.where("course_id").is(filters.getCourseId()));
@@ -86,22 +88,17 @@ public class CalendarServiceImpl implements CalendarService {
                     eventQuery.addCriteria(Criteria.where("learning_group_id").is(filters.getGroupId()));
                 }
                 eventRules.addAll(mongoTemplate.find(eventQuery, Event.class));
-
-                // You would do the same for assignments
-                assignments.addAll(assignmentRepository.findAll()); // For now, we keep assignments unfiltered
+                assignments.addAll(assignmentRepository.findAll());
                 break;
         }
 
-        // Step 3: Generate instances of recurring events for the calculated week
         Stream<CalendarEventDto> recurringEvents = eventRules.stream()
                 .flatMap(rule -> generateEventsForWeek(rule, weekStartDate, weekEndDate));
 
-        // Step 4: Filter assignments for the calculated week
         Stream<CalendarEventDto> weeklyAssignments = assignments.stream()
                 .filter(a -> a.getDueDate() != null && !a.getDueDate().isBefore(weekStartDate) && !a.getDueDate().isAfter(weekEndDate))
                 .map(this::mapAssignmentToDto);
 
-        // Step 5: Combine, sort, and return the final list
         return Stream.concat(recurringEvents, weeklyAssignments)
                 .sorted(Comparator.comparing(CalendarEventDto::getDate))
                 .collect(Collectors.toList());

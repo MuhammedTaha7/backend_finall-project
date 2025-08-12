@@ -13,6 +13,8 @@ import java.util.List;
 @AllArgsConstructor
 public class TemplateRequest {
 
+    private List<String> recipientIds;
+
     private String name;
     private String category;
     private String subject;
