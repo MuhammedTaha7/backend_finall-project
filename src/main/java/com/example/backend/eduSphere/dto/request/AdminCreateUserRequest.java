@@ -1,0 +1,28 @@
+package com.example.backend.eduSphere.dto.request;
+
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class AdminCreateUserRequest {
+
+    // common
+    private String name;
+    private String email;
+    private String role;
+    private String phoneNumber;
+
+    // for student
+    private String department;
+    private String academicYear;
+    private String status;
+
+    // for lecturer
+    private String specialization;
+    private String employmentType;
+    private String experience;
+    private Double rating;
+}

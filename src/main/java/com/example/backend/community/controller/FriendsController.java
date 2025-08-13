@@ -26,6 +26,10 @@ public class FriendsController {
         if (authentication == null || authentication.getName() == null) {
             return ResponseEntity.status(401).build(); // Unauthorized
         }
+        System.out.println("111111bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" + authentication.getName());
+        System.out.println("222222bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" + authentication.getCredentials().toString());
+        System.out.println("333333bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" + authentication.getAuthorities());
+        System.out.println("444444bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" + authentication.getDetails());
         return ResponseEntity.ok(friendsService.getFriends(authentication.getName()));
     }
 

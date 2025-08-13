@@ -1,7 +1,9 @@
 package com.example.backend.eduSphere.controller;
 
+import com.example.backend.eduSphere.dto.request.AdminCreateUserRequest;
 import com.example.backend.eduSphere.entity.UserEntity;
 import com.example.backend.eduSphere.service.UserService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -62,5 +64,19 @@ public class UserController {
     public ResponseEntity<List<UserEntity>> getUsersByIds(@RequestBody List<String> userIds) {
         List<UserEntity> users = userService.findUsersByIds(userIds);
         return ResponseEntity.ok(users);
+    }
+
+    @PostMapping("/admin-create")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    public ResponseEntity<UserEntity> createAdminUser(@RequestBody AdminCreateUserRequest request) {
+        UserEntity createdUser = userService.createAdminUser(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdUser);
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    public ResponseEntity<UserEntity> updateUser(@PathVariable String id, @RequestBody AdminCreateUserRequest request) {
+        UserEntity updatedUser = userService.updateUser(id, request);
+        return ResponseEntity.ok(updatedUser);
     }
 }

@@ -1,9 +1,11 @@
+// src/main/java/com/example/backend/config/SecurityConfig.java
 package com.example.backend.config;
 
 import com.example.backend.common.security.JwtRequestFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -15,9 +17,6 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.http.HttpMethod;
-
-import static org.springframework.security.config.Customizer.withDefaults;
 
 @Configuration
 @EnableWebSecurity
@@ -32,25 +31,28 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        // 1. Allow public access to register and login endpoints
+                        // Public endpoints
                         .requestMatchers("/api/register", "/api/login").permitAll()
+                        .requestMatchers("/api/auth/user").authenticated()
 
-                        // 🆕 ADDED: Explicitly define a rule for templates
-//                        .requestMatchers("/api/templates/**").hasAuthority("ROLE_ADMIN")
-
-                        // 2. Admin-only endpoints (course management and enrollment operations)
+                        // Admin-only endpoints for courses
                         .requestMatchers(HttpMethod.POST, "/api/courses").hasAuthority("ROLE_ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/courses/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/courses/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/courses/*/enroll").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/courses/*/enrollments").hasAuthority("ROLE_ADMIN")
 
-                        // 3. Read access to courses and messages - allow all authenticated users
+                        // 🆕 Admin-only endpoints for user and department management
+                        .requestMatchers(HttpMethod.POST, "/api/users/admin-create").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers("/api/users/**").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers("/api/departments/**").hasAuthority("ROLE_ADMIN")
+
+                        // Read access to courses and messages - allow all authenticated users
                         .requestMatchers(HttpMethod.GET, "/api/courses/**").authenticated()
-                                .requestMatchers("/api/messages/**").authenticated()
-                                .requestMatchers("/api/calendar/**").authenticated()
+                        .requestMatchers("/api/messages/**").authenticated()
+                        .requestMatchers("/api/calendar/**").authenticated()
 
-
-                        // 4. All other requests require authentication
+                        // All other requests require authentication
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

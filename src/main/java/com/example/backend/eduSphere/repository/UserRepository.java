@@ -16,6 +16,7 @@ public interface UserRepository extends MongoRepository<UserEntity, String> {
     List<UserEntity> findByRole(String role);
 
 
+
     List<UserEntity> findByNameContainingIgnoreCaseOrUsernameContainingIgnoreCase(String name, String username);
 
     @Query("{'university': ?0, '_id': {$nin: ?1}}")

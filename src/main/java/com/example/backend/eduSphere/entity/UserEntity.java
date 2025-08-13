@@ -21,6 +21,9 @@ import java.util.Map;
 @Document(collection = "users")
 public class UserEntity implements UserDetails {
 
+    // ----------------------
+    // Common User Fields
+    // ----------------------
     @Id
     private String id;
 
@@ -29,32 +32,50 @@ public class UserEntity implements UserDetails {
 
     @Indexed(unique = true)
     private String email;
-
     private String password;
+    private String name;
+    private String role; // "1300" (student), "1200" (lecturer), "1100" (admin)
 
-    private String name; // Display name
-    private String role; // "1300", "1200", "1100" (student, lecturer, admin)
+    // ----------------------
+    // General Profile Information
+    // ----------------------
     private String profilePic;
-    private String coverPic; // For profile cover image
-    private String title; // Job title or academic title
+    private String coverPic;
+    private String title;
     private String university;
-    private String bio; // User bio/summary
+    private String bio;
     private String location;
     private String website;
-    private String phoneNumber;
+    private String phoneNumber; // 🆕 Added to all users
+    private Map<String, String> socialLinks; // 🆕 Social links for all users
 
-    // Social media links
-    private Map<String, String> socialLinks;
+    // ----------------------
+    // Student-Specific Fields
+    // ----------------------
+    private String academicYear;
+    private String department;
+    private String status;
 
+
+    // ----------------------
+    // Lecturer-Specific Fields
+    // ----------------------
+    private String specialization;
+    private String employmentType;
+    private String experience; // Years of Experience
+    private Double rating; // Lecturer rating
+
+
+    // ----------------------
+    // System Metadata
+    // ----------------------
     @CreatedDate
     private LocalDateTime createdAt;
 
     @LastModifiedDate
     private LocalDateTime updatedAt;
 
-    // --- 2. UserDetails METHODS ---
-    // These methods are required by Spring Security.
-
+    // --- UserDetails METHODS ---
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         String roleName;
@@ -69,7 +90,7 @@ public class UserEntity implements UserDetails {
                 roleName = "ROLE_STUDENT";
                 break;
             default:
-                roleName = "ROLE_USER"; // A default fallback role
+                roleName = "ROLE_USER";
                 break;
         }
         return Collections.singletonList(new SimpleGrantedAuthority(roleName));
@@ -77,8 +98,6 @@ public class UserEntity implements UserDetails {
 
     @Override
     public String getUsername() {
-        // Spring Security's "username" is the unique identifier used for login.
-        // In your case, it seems to be the username field.
         return this.username;
     }
 
@@ -89,21 +108,21 @@ public class UserEntity implements UserDetails {
 
     @Override
     public boolean isAccountNonExpired() {
-        return true; // Or add logic for this
+        return true;
     }
 
     @Override
     public boolean isAccountNonLocked() {
-        return true; // Or add logic for this
+        return true;
     }
 
     @Override
     public boolean isCredentialsNonExpired() {
-        return true; // Or add logic for this
+        return true;
     }
 
     @Override
     public boolean isEnabled() {
-        return true; // Or add logic for this
+        return true;
     }
 }

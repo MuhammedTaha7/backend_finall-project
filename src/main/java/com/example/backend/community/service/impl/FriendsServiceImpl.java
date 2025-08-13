@@ -46,6 +46,7 @@ public class FriendsServiceImpl implements FriendsService {
 
     @Override
     public List<UserDto> getFriends(String userId) {
+        System.out.println("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" + userId);
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 

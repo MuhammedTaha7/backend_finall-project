@@ -1,5 +1,6 @@
 package com.example.backend.eduSphere.service;
 
+import com.example.backend.eduSphere.dto.request.AdminCreateUserRequest;
 import com.example.backend.eduSphere.dto.request.LoginRequest;
 import com.example.backend.eduSphere.dto.request.RegisterRequest;
 import com.example.backend.eduSphere.dto.response.LoginResponse;
@@ -23,4 +24,9 @@ public interface UserService {
     List<UserEntity> findUsersByRole(String role);
 
     List<UserEntity> findUsersByIds(List<String> userIds);
+
+    UserEntity createAdminUser(AdminCreateUserRequest request);
+
+    UserEntity updateUser(String userId, AdminCreateUserRequest request);
+
 }
