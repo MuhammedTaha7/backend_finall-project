@@ -29,4 +29,6 @@ public interface UserService {
 
     UserEntity updateUser(String userId, AdminCreateUserRequest request);
 
+    UserEntity getUserByUsername(String username);
+
 }

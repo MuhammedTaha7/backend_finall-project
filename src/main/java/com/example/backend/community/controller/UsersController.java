@@ -1,6 +1,7 @@
 package com.example.backend.community.controller;
 
 import com.example.backend.community.service.UsersService;
+import com.example.backend.eduSphere.service.UserService; // Add this import
 import com.example.backend.community.dto.UserDto;
 import com.example.backend.community.dto.request.UpdateProfileRequest;
 import com.example.backend.community.dto.request.ReportRequest;
@@ -20,6 +21,9 @@ public class UsersController {
     @Autowired
     private UsersService usersService;
 
+    @Autowired
+    private UserService userService; // Add this
+
     @GetMapping("/profile/{userId}")
     public ResponseEntity<UserDto> getUserProfile(@PathVariable String userId) {
         UserDto user = usersService.getUserProfile(userId);
@@ -30,7 +34,8 @@ public class UsersController {
     public ResponseEntity<UserDto> updateProfile(
             @RequestBody UpdateProfileRequest request,
             Authentication authentication) {
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         UserDto user = usersService.updateProfile(request, userId);
         return ResponseEntity.ok(user);
     }
@@ -45,7 +50,8 @@ public class UsersController {
     public ResponseEntity<Map<String, String>> uploadAvatar(
             @RequestParam("avatar") MultipartFile file,
             Authentication authentication) {
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         Map<String, String> result = usersService.uploadAvatar(file, userId);
         return ResponseEntity.ok(result);
     }
@@ -55,7 +61,8 @@ public class UsersController {
             @PathVariable String userId,
             @RequestBody ReportRequest request,
             Authentication authentication) {
-        String reporterId = authentication.getName();
+        String username = authentication.getName();
+        String reporterId = userService.getUserByUsername(username).getId();
         usersService.reportUser(userId, request, reporterId);
         return ResponseEntity.ok().build();
     }

@@ -1,6 +1,7 @@
 package com.example.backend.community.controller;
 
 import com.example.backend.community.service.JobsService;
+import com.example.backend.eduSphere.service.UserService; // Add this import
 import com.example.backend.community.dto.JobDto;
 import com.example.backend.community.dto.JobApplicationDto;
 import com.example.backend.community.dto.request.CreateJobRequest;
@@ -22,6 +23,9 @@ public class JobsController {
     @Autowired
     private JobsService jobsService;
 
+    @Autowired
+    private UserService userService; // Add this
+
     @GetMapping
     public ResponseEntity<List<JobDto>> getAllJobs(
             @RequestParam(required = false) String type,
@@ -33,28 +37,32 @@ public class JobsController {
 
     @GetMapping("/my-posts")
     public ResponseEntity<List<JobDto>> getMyPostedJobs(Authentication authentication) {
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         List<JobDto> jobs = jobsService.getJobsByPoster(userId);
         return ResponseEntity.ok(jobs);
     }
 
     @GetMapping("/applied")
     public ResponseEntity<List<JobDto>> getAppliedJobs(Authentication authentication) {
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         List<JobDto> jobs = jobsService.getAppliedJobs(userId);
         return ResponseEntity.ok(jobs);
     }
 
     @GetMapping("/saved")
     public ResponseEntity<List<JobDto>> getSavedJobs(Authentication authentication) {
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         List<JobDto> jobs = jobsService.getSavedJobs(userId);
         return ResponseEntity.ok(jobs);
     }
 
     @PostMapping
     public ResponseEntity<JobDto> createJob(@RequestBody CreateJobRequest request, Authentication authentication) {
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         JobDto job = jobsService.createJob(request, userId);
         return ResponseEntity.ok(job);
     }
@@ -64,14 +72,16 @@ public class JobsController {
             @PathVariable String jobId,
             @RequestBody UpdateJobRequest request,
             Authentication authentication) {
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         JobDto job = jobsService.updateJob(jobId, request, userId);
         return ResponseEntity.ok(job);
     }
 
     @DeleteMapping("/{jobId}")
     public ResponseEntity<Void> deleteJob(@PathVariable String jobId, Authentication authentication) {
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         jobsService.deleteJob(jobId, userId);
         return ResponseEntity.ok().build();
     }
@@ -81,21 +91,24 @@ public class JobsController {
             @PathVariable String jobId,
             @RequestBody ApplyToJobRequest request,
             Authentication authentication) {
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         jobsService.applyToJob(jobId, request, userId);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/{jobId}/save")
     public ResponseEntity<Void> saveJob(@PathVariable String jobId, Authentication authentication) {
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         jobsService.saveJob(jobId, userId);
         return ResponseEntity.ok().build();
     }
 
     @DeleteMapping("/{jobId}/save")
     public ResponseEntity<Void> unsaveJob(@PathVariable String jobId, Authentication authentication) {
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         jobsService.unsaveJob(jobId, userId);
         return ResponseEntity.ok().build();
     }
@@ -104,9 +117,9 @@ public class JobsController {
     public ResponseEntity<List<JobApplicationDto>> getJobApplications(
             @PathVariable String jobId,
             Authentication authentication) {
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
 
-        // Use the enhanced method that includes CV data
         List<JobApplicationDto> applications = jobsService.getJobApplicationsWithCVData(jobId, userId);
         return ResponseEntity.ok(applications);
     }
@@ -115,7 +128,8 @@ public class JobsController {
     public ResponseEntity<Void> acceptApplication(
             @PathVariable String applicationId,
             Authentication authentication) {
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         jobsService.acceptApplication(applicationId, userId);
         return ResponseEntity.ok().build();
     }
@@ -124,22 +138,22 @@ public class JobsController {
     public ResponseEntity<Void> rejectApplication(
             @PathVariable String applicationId,
             Authentication authentication) {
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         jobsService.rejectApplication(applicationId, userId);
         return ResponseEntity.ok().build();
     }
 
-    // This matches your frontend call: /api/jobs/cv/download/{applicantId}
     @GetMapping("/cv/download/{applicantId}")
     public ResponseEntity<Resource> downloadApplicantCV(
             @PathVariable String applicantId,
             Authentication authentication) {
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
 
         try {
             Resource resource = jobsService.downloadApplicantCV(applicantId, userId);
 
-            // Create a meaningful filename
             String filename = String.format("cv_%s.pdf", applicantId);
 
             return ResponseEntity.ok()

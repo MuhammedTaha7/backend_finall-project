@@ -34,7 +34,6 @@ public class UserController {
      * @return A list of users with the specified role.
      */
     @GetMapping("/role/{role}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN')") // Only an admin should be able to do this
     public ResponseEntity<List<UserEntity>> getUsersByRole(@PathVariable String role) {
         List<UserEntity> users = userService.findUsersByRole(role);
         return ResponseEntity.ok(users);

@@ -1,6 +1,7 @@
 package com.example.backend.community.controller;
 
 import com.example.backend.community.service.GroupsService;
+import com.example.backend.eduSphere.service.UserService; // Add this import
 import com.example.backend.community.dto.*;
 import com.example.backend.community.dto.request.*;
 import jakarta.validation.Valid;
@@ -19,20 +20,23 @@ public class GroupsController {
     @Autowired
     private GroupsService groupsService;
 
-    // EXISTING ENDPOINTS (keep all your current ones)
+    @Autowired
+    private UserService userService; // Add this
 
     @GetMapping
     public ResponseEntity<List<GroupDto>> getAllGroups(
             @RequestParam(required = false) Boolean joined,
             Authentication authentication) {
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         List<GroupDto> groups = groupsService.getAllGroups(userId, joined);
         return ResponseEntity.ok(groups);
     }
 
     @GetMapping("/my-groups")
     public ResponseEntity<List<GroupDto>> getMyGroups(Authentication authentication) {
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         List<GroupDto> groups = groupsService.getUserGroups(userId);
         return ResponseEntity.ok(groups);
     }
@@ -50,7 +54,8 @@ public class GroupsController {
             @RequestPart("type") String type,
             @RequestPart(value = "img", required = false) MultipartFile img,
             Authentication authentication) {
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
 
         CreateGroupRequest request = new CreateGroupRequest();
         request.setName(name);
@@ -66,28 +71,32 @@ public class GroupsController {
             @PathVariable String groupId,
             @RequestBody UpdateGroupRequest request,
             Authentication authentication) {
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         GroupDto group = groupsService.updateGroup(groupId, request, userId);
         return ResponseEntity.ok(group);
     }
 
     @DeleteMapping("/{groupId}")
     public ResponseEntity<Void> deleteGroup(@PathVariable String groupId, Authentication authentication) {
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         groupsService.deleteGroup(groupId, userId);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/{groupId}/join")
     public ResponseEntity<Void> joinGroup(@PathVariable String groupId, Authentication authentication) {
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         groupsService.joinGroup(groupId, userId);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/{groupId}/leave")
     public ResponseEntity<Void> leaveGroup(@PathVariable String groupId, Authentication authentication) {
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         groupsService.leaveGroup(groupId, userId);
         return ResponseEntity.ok().build();
     }
@@ -103,7 +112,8 @@ public class GroupsController {
             @PathVariable String groupId,
             @RequestBody PromoteMemberRequest request,
             Authentication authentication) {
-        String currentUserId = authentication.getName();
+        String username = authentication.getName();
+        String currentUserId = userService.getUserByUsername(username).getId();
         groupsService.promoteMember(groupId, request.getUserId(), request.getRole(), currentUserId);
         return ResponseEntity.ok().build();
     }
@@ -113,7 +123,8 @@ public class GroupsController {
             @PathVariable String groupId,
             @RequestBody RemoveMemberRequest request,
             Authentication authentication) {
-        String currentUserId = authentication.getName();
+        String username = authentication.getName();
+        String currentUserId = userService.getUserByUsername(username).getId();
         groupsService.removeMember(groupId, request.getUserId(), currentUserId);
         return ResponseEntity.ok().build();
     }
@@ -126,25 +137,28 @@ public class GroupsController {
 
     @GetMapping("/feed")
     public ResponseEntity<List<PostDto>> getGroupFeed(Authentication authentication) {
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         List<PostDto> posts = groupsService.getGroupFeed(userId);
         return ResponseEntity.ok(posts);
     }
 
     @GetMapping("/search")
     public ResponseEntity<List<GroupDto>> searchGroups(
-            @RequestParam(required = false) String q, // search term
+            @RequestParam(required = false) String q,
             @RequestParam(required = false, defaultValue = "all") String type,
             @RequestParam(required = false, defaultValue = "activity") String sortBy,
             Authentication authentication) {
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         List<GroupDto> groups = groupsService.searchGroups(userId, q, type, sortBy);
         return ResponseEntity.ok(groups);
     }
 
     @GetMapping("/recommendations")
     public ResponseEntity<List<GroupDto>> getRecommendedGroups(Authentication authentication) {
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         List<GroupDto> groups = groupsService.getRecommendedGroups(userId);
         return ResponseEntity.ok(groups);
     }
@@ -154,14 +168,16 @@ public class GroupsController {
             @PathVariable String groupId,
             @Valid @RequestBody InviteFriendsRequest request,
             Authentication authentication) {
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         BulkInviteResultDto result = groupsService.inviteFriendsToGroup(groupId, request, userId);
         return ResponseEntity.ok(result);
     }
 
     @GetMapping("/invitations")
     public ResponseEntity<List<GroupInvitationDto>> getGroupInvitations(Authentication authentication) {
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         List<GroupInvitationDto> invitations = groupsService.getGroupInvitations(userId);
         return ResponseEntity.ok(invitations);
     }
@@ -171,14 +187,16 @@ public class GroupsController {
             @PathVariable String invitationId,
             @Valid @RequestBody InvitationResponseRequest request,
             Authentication authentication) {
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         groupsService.respondToGroupInvitation(invitationId, request.getResponse(), userId);
         return ResponseEntity.ok().build();
     }
 
     @GetMapping("/stats")
     public ResponseEntity<GroupStatsDto> getGroupStats(Authentication authentication) {
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         GroupStatsDto stats = groupsService.getGroupStats(userId);
         return ResponseEntity.ok(stats);
     }
@@ -203,7 +221,8 @@ public class GroupsController {
             @PathVariable String groupId,
             @PathVariable String postId,
             Authentication authentication) {
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         groupsService.pinPost(groupId, postId, userId);
         return ResponseEntity.ok().build();
     }
@@ -213,7 +232,8 @@ public class GroupsController {
             @PathVariable String groupId,
             @PathVariable String postId,
             Authentication authentication) {
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         groupsService.unpinPost(groupId, postId, userId);
         return ResponseEntity.ok().build();
     }
@@ -229,7 +249,8 @@ public class GroupsController {
             @PathVariable String groupId,
             @RequestBody GroupSettingsRequest request,
             Authentication authentication) {
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         groupsService.updateGroupSettings(groupId, request, userId);
         return ResponseEntity.ok().build();
     }
@@ -238,7 +259,8 @@ public class GroupsController {
     public ResponseEntity<List<GroupDto>> getTrendingGroups(
             @RequestParam(required = false, defaultValue = "10") int limit,
             Authentication authentication) {
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         List<GroupDto> groups = groupsService.getTrendingGroups(userId, limit);
         return ResponseEntity.ok(groups);
     }
@@ -248,7 +270,8 @@ public class GroupsController {
             @PathVariable String groupId,
             @RequestBody GroupReportRequest request,
             Authentication authentication) {
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         groupsService.reportGroup(groupId, request, userId);
         return ResponseEntity.ok().build();
     }

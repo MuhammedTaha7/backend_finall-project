@@ -3,6 +3,7 @@ package com.example.backend.community.controller;
 import com.example.backend.community.dto.UserDto;
 import com.example.backend.community.service.FriendsService;
 import com.example.backend.community.service.StoriesService;
+import com.example.backend.eduSphere.service.UserService; // Add this import
 import com.example.backend.community.dto.StoryDto;
 import com.example.backend.community.dto.response.StoriesFeedResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +25,9 @@ public class StoriesController {
     @Autowired
     private FriendsService friendsService;
 
+    @Autowired
+    private UserService userService; // Add this
+
     @GetMapping("/feed")
     public ResponseEntity<StoriesFeedResponse> getStoriesFeed(
             @RequestParam(required = false) String userId,
@@ -35,7 +39,8 @@ public class StoriesController {
             return ResponseEntity.status(401).build(); // Unauthorized
         }
 
-        String currentUserId = authentication.getName(); // This is now userId
+        String username = authentication.getName();
+        String currentUserId = userService.getUserByUsername(username).getId();
         StoriesFeedResponse feed = storiesService.getStoriesFeed(currentUserId);
         return ResponseEntity.ok(feed);
     }
@@ -53,7 +58,8 @@ public class StoriesController {
             return ResponseEntity.status(401).build(); // Unauthorized
         }
 
-        String currentUserId = authentication.getName(); // This is now userId
+        String username = authentication.getName();
+        String currentUserId = userService.getUserByUsername(username).getId();
 
         try {
             StoryDto story = storiesService.createStory(currentUserId, name, profilePic, text, img);
@@ -76,7 +82,8 @@ public class StoriesController {
             return ResponseEntity.status(401).build(); // Unauthorized
         }
 
-        String userId = authentication.getName(); // This is now userId
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         storiesService.deleteStory(storyId, userId);
         return ResponseEntity.ok().build();
     }
@@ -86,7 +93,9 @@ public class StoriesController {
         if (authentication == null || authentication.getName() == null) {
             return ResponseEntity.status(401).build(); // Unauthorized
         }
-        return ResponseEntity.ok(friendsService.getFriends(authentication.getName()));
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
+        return ResponseEntity.ok(friendsService.getFriends(userId));
     }
 
     @GetMapping("/debug/auth")

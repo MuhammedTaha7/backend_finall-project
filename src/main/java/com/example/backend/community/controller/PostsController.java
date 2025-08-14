@@ -2,6 +2,7 @@ package com.example.backend.community.controller;
 
 import com.example.backend.community.service.PostsService;
 import com.example.backend.community.service.FriendsService;
+import com.example.backend.eduSphere.service.UserService; // Add this import
 import com.example.backend.community.dto.PostDto;
 import com.example.backend.community.dto.CommentDto;
 import com.example.backend.community.dto.UserDto;
@@ -26,13 +27,17 @@ public class PostsController {
     @Autowired
     private FriendsService friendsService;
 
+    @Autowired
+    private UserService userService; // Add this
+
     @GetMapping("/feed")
     public ResponseEntity<List<PostDto>> getFeed(Authentication authentication) {
         if (authentication == null || authentication.getName() == null) {
             return ResponseEntity.status(401).build();
         }
 
-        String currentUserId = authentication.getName();
+        String username = authentication.getName();
+        String currentUserId = userService.getUserByUsername(username).getId();
 
         // Get friend IDs automatically
         List<String> friendIds = new ArrayList<>();
@@ -59,7 +64,8 @@ public class PostsController {
             return ResponseEntity.status(401).build();
         }
 
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         PostDto post = postsService.createPost(request, userId);
         return ResponseEntity.ok(post);
     }
@@ -74,7 +80,8 @@ public class PostsController {
             return ResponseEntity.status(401).build();
         }
 
-        String currentUserId = authentication.getName();
+        String username = authentication.getName();
+        String currentUserId = userService.getUserByUsername(username).getId();
         PostDto post = postsService.toggleLike(postId, currentUserId);
         return ResponseEntity.ok(post);
     }
@@ -85,7 +92,8 @@ public class PostsController {
             return ResponseEntity.status(401).build();
         }
 
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         postsService.savePost(postId, userId);
         return ResponseEntity.ok().build();
     }
@@ -96,7 +104,8 @@ public class PostsController {
             return ResponseEntity.status(401).build();
         }
 
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         postsService.unsavePost(postId, userId);
         return ResponseEntity.ok().build();
     }
@@ -107,7 +116,8 @@ public class PostsController {
             return ResponseEntity.status(401).build();
         }
 
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         List<PostDto> posts = postsService.getSavedPosts(userId);
         return ResponseEntity.ok(posts);
     }
@@ -128,7 +138,8 @@ public class PostsController {
             return ResponseEntity.status(401).build();
         }
 
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         CommentDto comment = postsService.createComment(postId, request, userId);
         return ResponseEntity.ok(comment);
     }

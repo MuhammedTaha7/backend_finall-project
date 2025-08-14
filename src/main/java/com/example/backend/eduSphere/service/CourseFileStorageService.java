@@ -24,4 +24,18 @@ public interface CourseFileStorageService {
      * @param filename The unique name of the file to delete.
      */
     void deleteFile(String filename);
+
+    /**
+     * Checks if a file exists on the server.
+     * @param filename The unique name of the file to check.
+     * @return true if the file exists, false otherwise.
+     */
+    boolean fileExists(String filename);
+
+    /**
+     * Gets the size of a file in bytes.
+     * @param filename The unique name of the file.
+     * @return The file size in bytes, or 0 if file doesn't exist.
+     */
+    long getFileSize(String filename);
 }

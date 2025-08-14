@@ -1,6 +1,7 @@
 package com.example.backend.community.controller;
 
 import com.example.backend.community.service.CVService;
+import com.example.backend.eduSphere.service.UserService; // Add this import
 import com.example.backend.community.dto.CVDto;
 import com.example.backend.community.dto.request.SaveCVRequest;
 import com.example.backend.community.dto.request.AIExtractRequest;
@@ -22,27 +23,29 @@ public class CVController {
     @Autowired
     private CVService cvService;
 
-    // ============================================================================
-    // EXISTING CV ENDPOINTS (Keep these)
-    // ============================================================================
+    @Autowired
+    private UserService userService; // Add this
 
     @GetMapping
     public ResponseEntity<CVDto> getCV(Authentication authentication) {
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         CVDto cv = cvService.getUserCV(userId);
         return ResponseEntity.ok(cv);
     }
 
     @PostMapping
     public ResponseEntity<CVDto> saveCV(@RequestBody SaveCVRequest request, Authentication authentication) {
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         CVDto cv = cvService.saveCV(request, userId);
         return ResponseEntity.ok(cv);
     }
 
     @DeleteMapping
     public ResponseEntity<Void> deleteCV(Authentication authentication) {
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         cvService.deleteCV(userId);
         return ResponseEntity.ok().build();
     }
@@ -51,14 +54,16 @@ public class CVController {
     public ResponseEntity<Map<String, String>> uploadCV(
             @RequestParam("cv") MultipartFile file,
             Authentication authentication) {
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         Map<String, String> result = cvService.uploadCV(file, userId);
         return ResponseEntity.ok(result);
     }
 
     @GetMapping("/download")
     public ResponseEntity<Resource> downloadCV(Authentication authentication) {
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         Resource resource = cvService.downloadCV(userId);
         return ResponseEntity.ok()
                 .header("Content-Disposition", "attachment; filename=\"cv.pdf\"")
@@ -69,20 +74,18 @@ public class CVController {
     public ResponseEntity<Map<String, String>> aiExtractCV(
             @RequestBody AIExtractRequest request,
             Authentication authentication) {
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         Map<String, String> extractedData = cvService.aiExtractCV(request.getText());
         return ResponseEntity.ok(extractedData);
     }
-
-    // ============================================================================
-    // NEW ENHANCED AI ENDPOINTS (Merge from CvAiController)
-    // ============================================================================
 
     @PostMapping("/ai/generate")
     public ResponseEntity<CvAiResponse> generateCVWithAI(
             @RequestBody CvAiRequest request,
             Authentication authentication) {
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         CvAiResponse response = cvService.generateCVWithAI(request, userId);
         return ResponseEntity.ok(response);
     }
@@ -91,19 +94,17 @@ public class CVController {
     public ResponseEntity<CvAiResponse> improveCVSection(
             @RequestBody CvAiRequest request,
             Authentication authentication) {
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         CvAiResponse response = cvService.improveCVSection(request, userId);
         return ResponseEntity.ok(response);
     }
 
-    // ============================================================================
-    // JOB BOARD INTEGRATION ENDPOINTS
-    // ============================================================================
-
     @GetMapping("/user/{userId}")
     public ResponseEntity<CVDto> getUserCV(@PathVariable String userId, Authentication authentication) {
-        // Only allow access for job applications viewing
-        CVDto cv = cvService.getUserCVForJobApplication(userId, authentication.getName());
+        String username = authentication.getName();
+        String currentUserId = userService.getUserByUsername(username).getId();
+        CVDto cv = cvService.getUserCVForJobApplication(userId, currentUserId);
         return ResponseEntity.ok(cv);
     }
 
@@ -111,7 +112,8 @@ public class CVController {
     public ResponseEntity<Resource> downloadApplicantCV(
             @PathVariable String applicantId,
             Authentication authentication) {
-        String employerId = authentication.getName();
+        String username = authentication.getName();
+        String employerId = userService.getUserByUsername(username).getId();
         Resource resource = cvService.downloadApplicantCV(applicantId, employerId);
         return ResponseEntity.ok()
                 .header("Content-Disposition", "attachment; filename=\"applicant_cv.pdf\"")
@@ -122,7 +124,8 @@ public class CVController {
     public ResponseEntity<Resource> generateCVPDF(
             @RequestBody SaveCVRequest request,
             Authentication authentication) {
-        String userId = authentication.getName();
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
         Resource pdfResource = cvService.generateCVPDF(request, userId);
         return ResponseEntity.ok()
                 .header("Content-Disposition", "attachment; filename=\"generated_cv.pdf\"")

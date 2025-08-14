@@ -4,6 +4,8 @@ import com.example.backend.eduSphere.dto.request.CreateCategoryRequest;
 import com.example.backend.eduSphere.entity.CourseFile;
 import com.example.backend.eduSphere.entity.FileCategory;
 import org.springframework.core.io.Resource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -20,6 +22,11 @@ public interface CourseContentService {
     // --- File Methods ---
     CourseFile storeFile(String categoryId, MultipartFile file);
     void deleteFile(String fileId);
-    Optional<CourseFile> getFileMetadata(String fileId); // Helper for downloads
+    Optional<CourseFile> getFileMetadata(String fileId);
     List<CourseFile> getFilesByCategory(String categoryId);
+    Page<CourseFile> getFilesByCategoryPaginated(String categoryId, Pageable pageable);
+    long getFilesCountByCategory(String categoryId);
+
+    // --- Access Control Methods ---
+    boolean canUserAccessCategory(String categoryId, String userId, String userRole);
 }

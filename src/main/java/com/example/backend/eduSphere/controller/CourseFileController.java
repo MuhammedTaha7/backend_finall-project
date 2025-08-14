@@ -57,7 +57,7 @@ public class CourseFileController {
     /**
      * DELETE /api/files/{fileId} : Delete a specific file.
      */
-    @DeleteMapping("/{fileId}")
+    @DeleteMapping("/course/{fileId}")
     public ResponseEntity<Void> deleteFile(@PathVariable String fileId) {
         courseContentService.deleteFile(fileId);
         return ResponseEntity.noContent().build();

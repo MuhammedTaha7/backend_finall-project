@@ -2,6 +2,7 @@ package com.example.backend.community.controller;
 
 import com.example.backend.community.dto.*;
 import com.example.backend.community.service.FriendsService;
+import com.example.backend.eduSphere.service.UserService; // Add this import
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -17,69 +18,84 @@ public class FriendsController {
     @Autowired
     private FriendsService friendsService;
 
-//    @GetMapping
-//    public ResponseEntity<List<UserDto>> getFriends(Authentication authentication) {
-//        return ResponseEntity.ok(friendsService.getFriends(authentication.getName()));
-//    }
+    @Autowired
+    private UserService userService; // Add this
+
     @GetMapping
     public ResponseEntity<List<UserDto>> getFriends(Authentication authentication) {
         if (authentication == null || authentication.getName() == null) {
-            return ResponseEntity.status(401).build(); // Unauthorized
+            return ResponseEntity.status(401).build();
         }
-        System.out.println("111111bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" + authentication.getName());
-        System.out.println("222222bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" + authentication.getCredentials().toString());
-        System.out.println("333333bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" + authentication.getAuthorities());
-        System.out.println("444444bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" + authentication.getDetails());
-        return ResponseEntity.ok(friendsService.getFriends(authentication.getName()));
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
+        return ResponseEntity.ok(friendsService.getFriends(userId));
     }
 
     @GetMapping("/suggestions")
     public ResponseEntity<List<UserDto>> getFriendSuggestions(Authentication authentication) {
-        return ResponseEntity.ok(friendsService.getFriendSuggestions(authentication.getName()));
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
+        return ResponseEntity.ok(friendsService.getFriendSuggestions(userId));
     }
 
     @GetMapping("/requests")
     public ResponseEntity<List<UserDto>> getFriendRequests(Authentication authentication) {
-        return ResponseEntity.ok(friendsService.getFriendRequests(authentication.getName()));
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
+        return ResponseEntity.ok(friendsService.getFriendRequests(userId));
     }
 
     @PostMapping("/request/{userId}")
     public ResponseEntity<Void> sendFriendRequest(@PathVariable String userId, Authentication authentication) {
-        friendsService.sendFriendRequest(authentication.getName(), userId);
+        String username = authentication.getName();
+        String currentUserId = userService.getUserByUsername(username).getId();
+        friendsService.sendFriendRequest(currentUserId, userId);
         return ResponseEntity.ok().build();
     }
 
     @PutMapping("/accept/{userId}")
     public ResponseEntity<Void> acceptFriendRequest(@PathVariable String userId, Authentication authentication) {
-        friendsService.acceptFriendRequest(userId, authentication.getName());
+        String username = authentication.getName();
+        String currentUserId = userService.getUserByUsername(username).getId();
+        friendsService.acceptFriendRequest(userId, currentUserId);
         return ResponseEntity.ok().build();
     }
 
     @PutMapping("/reject/{userId}")
     public ResponseEntity<Void> rejectFriendRequest(@PathVariable String userId, Authentication authentication) {
-        friendsService.rejectFriendRequest(userId, authentication.getName());
+        String username = authentication.getName();
+        String currentUserId = userService.getUserByUsername(username).getId();
+        friendsService.rejectFriendRequest(userId, currentUserId);
         return ResponseEntity.ok().build();
     }
 
     @DeleteMapping("/remove/{userId}")
     public ResponseEntity<Void> removeFriend(@PathVariable String userId, Authentication authentication) {
-        friendsService.removeFriend(authentication.getName(), userId);
+        String username = authentication.getName();
+        String currentUserId = userService.getUserByUsername(username).getId();
+        friendsService.removeFriend(currentUserId, userId);
         return ResponseEntity.ok().build();
     }
 
     @GetMapping("/status/{userId}")
     public ResponseEntity<FriendshipStatusDto> getFriendshipStatus(@PathVariable String userId, Authentication authentication) {
-        return ResponseEntity.ok(friendsService.getFriendshipStatus(authentication.getName(), userId));
+        String username = authentication.getName();
+        String currentUserId = userService.getUserByUsername(username).getId();
+        return ResponseEntity.ok(friendsService.getFriendshipStatus(currentUserId, userId));
     }
 
     @GetMapping("/activities")
     public ResponseEntity<List<ActivityDto>> getFriendsActivities(Authentication authentication) {
-        return ResponseEntity.ok(friendsService.getFriendsActivities(authentication.getName()));
+        String username = authentication.getName();
+        String userId = userService.getUserByUsername(username).getId();
+        return ResponseEntity.ok(friendsService.getFriendsActivities(userId));
     }
 
     @PostMapping("/dismiss-suggestion/{userId}")
     public ResponseEntity<Void> dismissSuggestion(@PathVariable String userId, Authentication authentication) {
-        friendsService.dismissSuggestion(authentication.getName(), userId);
+        String username = authentication.getName();
+        String currentUserId = userService.getUserByUsername(username).getId();
+        friendsService.dismissSuggestion(currentUserId, userId);
         return ResponseEntity.ok().build();
     }
 }
