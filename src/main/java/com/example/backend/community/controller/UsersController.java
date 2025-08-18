@@ -12,6 +12,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 import java.util.Map;
+import org.springframework.security.core.Authentication;
+
 
 @RestController
 @RequestMapping("/api/users")
@@ -41,8 +43,13 @@ public class UsersController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<UserDto>> searchUsers(@RequestParam String q) {
-        List<UserDto> users = usersService.searchUsers(q);
+    public ResponseEntity<List<UserDto>> searchUsers(
+            @RequestParam String q,
+            Authentication authentication) {
+
+        String username = authentication.getName();
+        String currentUserId = userService.getUserByUsername(username).getId();
+        List<UserDto> users = usersService.searchUsers(q, currentUserId); // 🆕 Pass the currentUserId here
         return ResponseEntity.ok(users);
     }
 

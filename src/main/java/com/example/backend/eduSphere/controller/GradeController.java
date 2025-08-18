@@ -32,7 +32,7 @@ public class GradeController {
      * GET /api/courses/{courseId}/grade-columns : Get all grade columns for a course
      */
     @GetMapping("/courses/{courseId}/grade-columns")
-    @PreAuthorize("hasRole('LECTURER')")
+    @PreAuthorize("hasRole('LECTURER') or hasRole('STUDENT')")
     public ResponseEntity<?> getGradeColumns(@PathVariable String courseId) {
         try {
             System.out.println("📊 === FETCHING GRADE COLUMNS ===");
@@ -186,7 +186,7 @@ public class GradeController {
             @PathVariable String columnId,
             @RequestBody Map<String, Object> request) {
         try {
-            System.out.println("📝 === UPDATING STUDENT GRADE ===");
+            System.out.println("🔍 === UPDATING STUDENT GRADE ===");
             System.out.println("Student ID: " + studentId);
             System.out.println("Column ID: " + columnId);
             System.out.println("Request body: " + request);
@@ -204,7 +204,7 @@ public class GradeController {
                     System.out.println("✅ Parsed as Number: " + grade);
                 } else if (gradeObj instanceof String) {
                     String gradeStr = (String) gradeObj;
-                    System.out.println("📝 String value: '" + gradeStr + "'");
+                    System.out.println("🔍 String value: '" + gradeStr + "'");
 
                     if (gradeStr.trim().isEmpty() || "null".equalsIgnoreCase(gradeStr.trim())) {
                         grade = null;
@@ -250,7 +250,7 @@ public class GradeController {
             System.out.println("✅ === GRADE UPDATE SUCCESSFUL ===");
             System.out.println("📊 Updated grades: " + updated.getGrades());
             System.out.println("🎯 Final calculated grade: " + updated.getFinalGrade() + "%");
-            System.out.println("📝 Letter grade: " + updated.getFinalLetterGrade());
+            System.out.println("🔍 Letter grade: " + updated.getFinalLetterGrade());
 
             return ResponseEntity.ok(updated);
 
@@ -402,10 +402,16 @@ public class GradeController {
             Double calculatedFinalGrade = gradeService.calculateFinalGrade(studentId, courseId);
             String calculatedLetterGrade = gradeService.calculateLetterGrade(calculatedFinalGrade);
 
+            // Calculate total percentage for debugging
+            double totalPercentage = columns.stream()
+                    .mapToDouble(col -> col.getPercentage().doubleValue())
+                    .sum();
+
             Map<String, Object> debug = new HashMap<>();
             debug.put("studentId", studentId);
             debug.put("courseId", courseId);
             debug.put("gradeColumns", columns);
+            debug.put("totalPercentage", totalPercentage);
             debug.put("studentGradeRecord", studentGrade);
             debug.put("calculatedFinalGrade", calculatedFinalGrade);
             debug.put("calculatedLetterGrade", calculatedLetterGrade);
@@ -413,6 +419,8 @@ public class GradeController {
 
             // Add validation checks
             List<String> issues = new ArrayList<>();
+            List<String> warnings = new ArrayList<>();
+
             if (columns.isEmpty()) {
                 issues.add("No grade columns found for course");
             }
@@ -422,9 +430,17 @@ public class GradeController {
             if (studentGrade != null && studentGrade.getGrades().isEmpty()) {
                 issues.add("Student has no grades entered");
             }
+            if (totalPercentage > 100.0) {
+                warnings.add("Total percentage exceeds 100% - grades will be normalized");
+            }
+            if (totalPercentage < 100.0) {
+                warnings.add("Total percentage is less than 100%");
+            }
 
             debug.put("issues", issues);
+            debug.put("warnings", warnings);
             debug.put("hasIssues", !issues.isEmpty());
+            debug.put("hasWarnings", !warnings.isEmpty());
 
             return ResponseEntity.ok(debug);
         } catch (Exception e) {
@@ -449,8 +465,8 @@ public class GradeController {
             List<StudentGrade> grades = gradeService.getGradesByCourse(courseId);
 
             // Calculate total percentage
-            int totalPercentage = columns.stream()
-                    .mapToInt(GradeColumn::getPercentage)
+            double totalPercentage = columns.stream()
+                    .mapToDouble(GradeColumn::getPercentage)
                     .sum();
 
             // Validation checks
@@ -458,7 +474,7 @@ public class GradeController {
             List<String> warnings = new ArrayList<>();
 
             if (totalPercentage > 100) {
-                issues.add("Total percentage exceeds 100%: " + totalPercentage + "%");
+                warnings.add("Total percentage exceeds 100%: " + totalPercentage + "% - grades will be normalized");
             } else if (totalPercentage < 100) {
                 warnings.add("Total percentage is less than 100%: " + totalPercentage + "%");
             }
@@ -486,7 +502,8 @@ public class GradeController {
             validation.put("totalColumns", columns.size());
             validation.put("totalStudentRecords", grades.size());
             validation.put("totalPercentage", totalPercentage);
-            validation.put("percentageValid", totalPercentage == 100);
+            validation.put("percentageStatus", totalPercentage == 100 ? "perfect" :
+                    totalPercentage > 100 ? "over" : "under");
             validation.put("gradeColumns", columns);
             validation.put("issues", issues);
             validation.put("warnings", warnings);

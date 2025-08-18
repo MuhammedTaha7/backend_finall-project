@@ -4,7 +4,6 @@ import com.example.backend.eduSphere.entity.GradeColumn;
 import com.example.backend.eduSphere.entity.StudentGrade;
 
 import java.util.List;
-import java.util.Optional;
 
 public interface GradeService {
     // Grade Columns

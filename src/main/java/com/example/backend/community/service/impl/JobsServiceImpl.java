@@ -13,6 +13,7 @@ import com.example.backend.community.dto.request.UpdateJobRequest;
 import com.example.backend.community.dto.request.ApplyToJobRequest;
 import com.example.backend.eduSphere.entity.UserEntity;
 import com.example.backend.eduSphere.repository.UserRepository;
+import com.example.backend.eduSphere.service.MailService; // ADD THIS IMPORT
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
@@ -39,6 +40,9 @@ public class JobsServiceImpl implements JobsService {
 
     @Autowired
     private CVService cvService;
+
+    @Autowired
+    private MailService mailService; // ADD THIS AUTOWIRED
 
     // ============================================================================
     // JOB MANAGEMENT METHODS
@@ -272,9 +276,18 @@ public class JobsServiceImpl implements JobsService {
             throw new RuntimeException("Unauthorized to manage this application");
         }
 
+        // Update application status
         application.setStatus("ACCEPTED");
         application.setReviewedAt(LocalDateTime.now());
         jobApplicationRepository.save(application);
+
+        // SEND ACCEPTANCE EMAIL
+        try {
+            sendAcceptanceEmail(application);
+        } catch (Exception e) {
+            // Log error but don't fail the whole operation
+            System.err.println("Failed to send acceptance email: " + e.getMessage());
+        }
     }
 
     @Override
@@ -287,9 +300,18 @@ public class JobsServiceImpl implements JobsService {
             throw new RuntimeException("Unauthorized to manage this application");
         }
 
+        // Update application status
         application.setStatus("REJECTED");
         application.setReviewedAt(LocalDateTime.now());
         jobApplicationRepository.save(application);
+
+        // SEND REJECTION EMAIL
+        try {
+            sendRejectionEmail(application);
+        } catch (Exception e) {
+            // Log error but don't fail the whole operation
+            System.err.println("Failed to send rejection email: " + e.getMessage());
+        }
     }
 
     @Override
@@ -304,6 +326,95 @@ public class JobsServiceImpl implements JobsService {
         }
 
         return cvService.downloadApplicantCV(applicantId, employerId);
+    }
+
+    // ============================================================================
+    // EMAIL NOTIFICATION METHODS
+    // ============================================================================
+
+    private void sendAcceptanceEmail(JobApplication application) {
+        String applicantEmail = application.getApplicant().getEmail();
+        String applicantName = application.getApplicant().getName();
+        String jobTitle = application.getJobPost().getTitle();
+        String companyName = application.getJobPost().getCompany();
+        String employerName = application.getJobPost().getPoster().getName();
+
+        String subject = "🎉 Congratulations! Your Job Application Has Been Accepted";
+
+        String emailBody = String.format(
+                "Dear %s,\n\n" +
+                        "Great news! We are pleased to inform you that your application for the position of '%s' at %s has been ACCEPTED! 🎉\n\n" +
+                        "We were impressed with your qualifications and believe you would be a great fit for our team.\n\n" +
+                        "📋 Job Details:\n" +
+                        "• Position: %s\n" +
+                        "• Company: %s\n" +
+                        "• Applied Date: %s\n\n" +
+                        "📞 Next Steps:\n" +
+                        "Our hiring team will contact you within the next 2-3 business days to discuss the next steps in the hiring process. Please keep an eye on your email and phone for our communication.\n\n" +
+                        "If you have any questions or concerns, feel free to reply to this email or contact us directly.\n\n" +
+                        "We look forward to having you join our team!\n\n" +
+                        "Best regards,\n" +
+                        "%s\n" +
+                        "%s\n\n" +
+                        "---\n" +
+                        "This is an automated message from our Job Board system.\n" +
+                        "Please do not reply directly to this email.",
+
+                applicantName,
+                jobTitle,
+                companyName,
+                jobTitle,
+                companyName,
+                application.getAppliedAt().toLocalDate().format(DateTimeFormatter.ofPattern("MMMM dd, yyyy")),
+                employerName,
+                companyName
+        );
+
+        mailService.sendMail(applicantEmail, subject, emailBody);
+    }
+
+    private void sendRejectionEmail(JobApplication application) {
+        String applicantEmail = application.getApplicant().getEmail();
+        String applicantName = application.getApplicant().getName();
+        String jobTitle = application.getJobPost().getTitle();
+        String companyName = application.getJobPost().getCompany();
+        String employerName = application.getJobPost().getPoster().getName();
+
+        String subject = "Thank You for Your Application - " + jobTitle + " at " + companyName;
+
+        String emailBody = String.format(
+                "Dear %s,\n\n" +
+                        "Thank you for taking the time to apply for the position of '%s' at %s and for your interest in joining our team.\n\n" +
+                        "📋 Job Details:\n" +
+                        "• Position: %s\n" +
+                        "• Company: %s\n" +
+                        "• Applied Date: %s\n\n" +
+                        "After careful consideration, we have decided to move forward with other candidates whose qualifications more closely match our current needs for this specific role.\n\n" +
+                        "💡 This decision does not reflect on your qualifications or potential. We encourage you to:\n" +
+                        "• Continue checking our job board for future opportunities\n" +
+                        "• Apply for other positions that match your skills and interests\n" +
+                        "• Keep building your experience and skills\n\n" +
+                        "We truly appreciate the time and effort you put into your application, and we wish you the very best in your job search and future career endeavors.\n\n" +
+                        "Thank you again for considering %s as your potential employer.\n\n" +
+                        "Best regards,\n" +
+                        "%s\n" +
+                        "%s\n\n" +
+                        "---\n" +
+                        "This is an automated message from our Job Board system.\n" +
+                        "Please do not reply directly to this email.",
+
+                applicantName,
+                jobTitle,
+                companyName,
+                jobTitle,
+                companyName,
+                application.getAppliedAt().toLocalDate().format(DateTimeFormatter.ofPattern("MMMM dd, yyyy")),
+                companyName,
+                employerName,
+                companyName
+        );
+
+        mailService.sendMail(applicantEmail, subject, emailBody);
     }
 
     // ============================================================================

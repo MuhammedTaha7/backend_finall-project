@@ -28,8 +28,13 @@ public class CourseDetailsResponse {
     private String finalExam;
     private List<YearlyEnrollment> enrollments;
 
+    // Add lecturer ID field
+    private String lecturerId;
+
     // --- Dynamically added data ---
     private String lecturerName;
+    private String instructorName; // Frontend expects this field too
+    private Object lecturer; // Frontend expects this field (can be null or lecturer object)
     private List<AssignmentResponse> assignments;
 
     // Helper method to convert a Course entity to this DTO
@@ -51,6 +56,15 @@ public class CourseDetailsResponse {
         dto.setPrerequisites(course.getPrerequisites());
         dto.setFinalExam(course.getFinalExam());
         dto.setEnrollments(course.getEnrollments());
+
+        // Copy lecturer ID if it exists
+        dto.setLecturerId(course.getLecturerId());
+
+        // Set default values for lecturer fields
+        dto.setLecturerName("Unknown Lecturer");
+        dto.setInstructorName("Unknown Lecturer");
+        dto.setLecturer(null);
+
         return dto;
     }
 }

@@ -7,7 +7,6 @@ import com.example.backend.eduSphere.dto.response.TaskResponse;
 import com.example.backend.eduSphere.entity.Course;
 import com.example.backend.eduSphere.entity.Task;
 import com.example.backend.eduSphere.entity.TaskSubmission;
-import com.example.backend.eduSphere.entity.UserEntity;
 import com.example.backend.eduSphere.entity.GradeColumn;
 import com.example.backend.eduSphere.repository.CourseRepository;
 import com.example.backend.eduSphere.repository.TaskRepository;
@@ -123,7 +122,7 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     public TaskResponse createTask(TaskCreateRequest request, String instructorId) {
-        System.out.println("➕ === CREATING TASK ===");
+        System.out.println("🎯 === CREATING TASK ===");
         System.out.println("Instructor: " + instructorId);
         System.out.println("Course: " + request.getCourseId());
         System.out.println("Title: " + request.getTitle());
@@ -204,7 +203,7 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     public TaskResponse updateTask(String taskId, TaskUpdateRequest request, String instructorId) {
-        System.out.println("🔄 === UPDATING TASK ===");
+        System.out.println("📝 === UPDATING TASK ===");
         System.out.println("Task ID: " + taskId);
         System.out.println("Instructor: " + instructorId);
 
@@ -468,6 +467,208 @@ public class TaskServiceImpl implements TaskService {
         } catch (Exception e) {
             System.err.println("❌ Error searching tasks: " + e.getMessage());
             return new ArrayList<>();
+        }
+    }
+
+    // NEW STUDENT-SPECIFIC METHODS
+
+    @Override
+    public List<TaskResponse> getTasksForStudent(String studentId, String courseId, String status) {
+        try {
+            System.out.println("👨‍🎓 Getting tasks for student: " + studentId + " in course: " + courseId);
+
+            List<Task> tasks;
+            if (status != null && !status.trim().isEmpty()) {
+                tasks = taskRepository.findByCourseIdAndStatusOrderByDueDateAsc(courseId, status);
+            } else {
+                tasks = taskRepository.findByCourseIdOrderByDueDateAsc(courseId);
+            }
+
+            // Filter to only show tasks visible to students and published
+            List<Task> visibleTasks = tasks.stream()
+                    .filter(task -> Boolean.TRUE.equals(task.getVisibleToStudents()))
+                    .filter(Task::isPublished)
+                    .collect(Collectors.toList());
+
+            List<TaskResponse> taskResponses = new ArrayList<>();
+            for (Task task : visibleTasks) {
+                TaskResponse response = convertToResponse(task);
+
+                // Add student-specific information
+                enhanceTaskResponseForStudent(response, task, studentId);
+
+                taskResponses.add(response);
+            }
+
+            System.out.println("✅ Found " + taskResponses.size() + " visible tasks for student");
+            return taskResponses;
+
+        } catch (Exception e) {
+            System.err.println("❌ Error fetching tasks for student: " + e.getMessage());
+            return new ArrayList<>();
+        }
+    }
+
+    @Override
+    public List<TaskResponse> getOverdueTasksForStudent(String studentId, String courseId) {
+        try {
+            System.out.println("⏰ Getting overdue tasks for student: " + studentId);
+
+            LocalDateTime now = LocalDateTime.now();
+            List<Task> tasks;
+
+            if (courseId != null && !courseId.trim().isEmpty()) {
+                tasks = taskRepository.findByCourseIdOrderByDueDateAsc(courseId);
+            } else {
+                // Get tasks from all courses the student is enrolled in
+                tasks = taskRepository.findAllByOrderByDueDateAsc();
+            }
+
+            List<TaskResponse> overdueTasks = new ArrayList<>();
+            for (Task task : tasks) {
+                // Only include visible, published tasks
+                if (!Boolean.TRUE.equals(task.getVisibleToStudents()) || !task.isPublished()) {
+                    continue;
+                }
+
+                // Check if task is overdue
+                if (task.getDueDateTime() != null && now.isAfter(task.getDueDateTime())) {
+                    // Check if student has already submitted
+                    Optional<TaskSubmission> submission = taskSubmissionRepository
+                            .findByTaskIdAndStudentId(task.getId(), studentId);
+
+                    if (submission.isEmpty()) {
+                        TaskResponse response = convertToResponse(task);
+                        enhanceTaskResponseForStudent(response, task, studentId);
+                        overdueTasks.add(response);
+                    }
+                }
+            }
+
+            System.out.println("✅ Found " + overdueTasks.size() + " overdue tasks for student");
+            return overdueTasks;
+
+        } catch (Exception e) {
+            System.err.println("❌ Error fetching overdue tasks for student: " + e.getMessage());
+            return new ArrayList<>();
+        }
+    }
+
+    @Override
+    public List<TaskResponse> getUpcomingTasksForStudent(String studentId, String courseId, int daysAhead) {
+        try {
+            System.out.println("📅 Getting upcoming tasks for student: " + studentId);
+
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime endDate = now.plusDays(daysAhead);
+            List<Task> tasks;
+
+            if (courseId != null && !courseId.trim().isEmpty()) {
+                tasks = taskRepository.findByCourseIdOrderByDueDateAsc(courseId);
+            } else {
+                // Get tasks from all courses the student is enrolled in
+                tasks = taskRepository.findAllByOrderByDueDateAsc();
+            }
+
+            List<TaskResponse> upcomingTasks = new ArrayList<>();
+            for (Task task : tasks) {
+                // Only include visible, published tasks
+                if (!Boolean.TRUE.equals(task.getVisibleToStudents()) || !task.isPublished()) {
+                    continue;
+                }
+
+                // Check if task is upcoming (due within the specified period)
+                if (task.getDueDateTime() != null &&
+                        task.getDueDateTime().isAfter(now) &&
+                        task.getDueDateTime().isBefore(endDate)) {
+
+                    TaskResponse response = convertToResponse(task);
+                    enhanceTaskResponseForStudent(response, task, studentId);
+                    upcomingTasks.add(response);
+                }
+            }
+
+            System.out.println("✅ Found " + upcomingTasks.size() + " upcoming tasks for student");
+            return upcomingTasks;
+
+        } catch (Exception e) {
+            System.err.println("❌ Error fetching upcoming tasks for student: " + e.getMessage());
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * Enhance task response with student-specific information
+     */
+    private void enhanceTaskResponseForStudent(TaskResponse response, Task task, String studentId) {
+        try {
+            // Check if student has submitted
+            Optional<TaskSubmission> submission = taskSubmissionRepository
+                    .findByTaskIdAndStudentId(task.getId(), studentId);
+
+            if (submission.isPresent()) {
+                TaskSubmission sub = submission.get();
+                response.setHasSubmission(true);
+                response.setSubmissionId(sub.getId());
+                response.setSubmissionGrade(sub.getGrade());
+                response.setSubmissionStatus(sub.getStatus());
+                response.setSubmittedAt(sub.getSubmittedAt());
+                response.setSubmissionFeedback(sub.getFeedback());
+                response.setIsLateSubmission(sub.getIsLate());
+            } else {
+                response.setHasSubmission(false);
+
+                // Check if student can still submit
+                response.setCanSubmit(canStudentSubmitToTask(task, studentId));
+            }
+
+            // Calculate time until due
+            if (task.getDueDateTime() != null) {
+                LocalDateTime now = LocalDateTime.now();
+                if (now.isBefore(task.getDueDateTime())) {
+                    long hoursUntilDue = java.time.Duration.between(now, task.getDueDateTime()).toHours();
+                    response.setHoursUntilDue(hoursUntilDue);
+                } else {
+                    response.setOverdue(true);
+                    long hoursOverdue = java.time.Duration.between(task.getDueDateTime(), now).toHours();
+                    response.setHoursOverdue(hoursOverdue);
+                }
+            }
+
+        } catch (Exception e) {
+            System.err.println("❌ Error enhancing task response for student: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Check if student can submit to a specific task
+     */
+    private boolean canStudentSubmitToTask(Task task, String studentId) {
+        try {
+            // Task must allow submissions
+            if (Boolean.FALSE.equals(task.getAllowSubmissions())) {
+                return false;
+            }
+
+            // Check due date
+            if (task.getDueDateTime() != null) {
+                LocalDateTime now = LocalDateTime.now();
+                if (now.isAfter(task.getDueDateTime()) && Boolean.FALSE.equals(task.getAllowLateSubmissions())) {
+                    return false;
+                }
+            }
+
+            // Check attempt limits
+            if (task.getMaxAttempts() != null && task.getMaxAttempts() > 0) {
+                long existingAttempts = taskSubmissionRepository.countByTaskIdAndStudentId(task.getId(), studentId);
+                return existingAttempts < task.getMaxAttempts();
+            }
+
+            return true;
+
+        } catch (Exception e) {
+            System.err.println("❌ Error checking if student can submit: " + e.getMessage());
+            return false;
         }
     }
 

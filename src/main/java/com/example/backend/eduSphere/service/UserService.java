@@ -3,12 +3,15 @@ package com.example.backend.eduSphere.service;
 import com.example.backend.eduSphere.dto.request.AdminCreateUserRequest;
 import com.example.backend.eduSphere.dto.request.LoginRequest;
 import com.example.backend.eduSphere.dto.request.RegisterRequest;
+import com.example.backend.eduSphere.dto.response.LecturerProfileDto;
 import com.example.backend.eduSphere.dto.response.LoginResponse;
+import com.example.backend.eduSphere.dto.response.StudentProfileDto;
 import com.example.backend.eduSphere.entity.UserEntity;
 import lombok.NonNull;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public interface UserService {
@@ -31,4 +34,5 @@ public interface UserService {
 
     UserEntity getUserByUsername(String username);
 
+    UserEntity findByUsername(String authName);
 }

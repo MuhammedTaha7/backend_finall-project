@@ -4,10 +4,20 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import org.springframework.core.io.PathResource;
+import org.springframework.core.io.Resource;
+import org.springframework.web.servlet.resource.PathResourceResolver;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.nio.file.Files;
@@ -29,6 +39,29 @@ public class FileUploadController {
     @Value("${app.base.url}")
     private String baseUrl;
 
+
+    private final String uploadRoot = "uploads"; // adjust path as needed
+    @GetMapping("/download/{context}/{type}/{filename}")
+    public ResponseEntity<Resource> downloadFile(
+            @PathVariable String context,
+            @PathVariable String type,
+            @PathVariable String filename) {
+
+        try {
+            Path filePath = Paths.get(uploadRoot, context, type, filename);
+            Resource resource = new UrlResource(filePath.toUri());
+
+            if (resource.exists() && resource.isReadable()) {
+                return ResponseEntity.ok()
+                        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
+                        .body(resource);
+            } else {
+                return ResponseEntity.notFound().build();
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
     @PostMapping("/upload/{context}/{type}")
     public ResponseEntity<Map<String, String>> uploadFile(
             @PathVariable String context, // "community" or "edusphere"

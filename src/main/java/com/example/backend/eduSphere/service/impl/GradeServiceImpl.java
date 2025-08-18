@@ -221,8 +221,8 @@ public class GradeServiceImpl implements GradeService {
     }
 
     /**
-     * NEW METHOD: Calculate final grade from an existing StudentGrade record
-     * This avoids fetching from database and uses the in-memory updated record
+     * FIXED: Calculate final grade from an existing StudentGrade record
+     * Now properly handles total percentages > 100% by normalizing to 100%
      */
     private Double calculateFinalGradeFromRecord(StudentGrade studentGrade, String courseId) {
         System.out.println("🧮 === CALCULATING FINAL GRADE FROM RECORD ===");
@@ -246,13 +246,20 @@ public class GradeServiceImpl implements GradeService {
                 return 0.0;
             }
 
-            System.out.println("📝 Student grades (from updated record): " + grades);
+            System.out.println("🔍 Student grades (from updated record): " + grades);
+
+            // FIXED: Calculate total percentage and normalize if > 100%
+            double totalPercentageOfAllColumns = columns.stream()
+                    .mapToDouble(col -> col.getPercentage().doubleValue())
+                    .sum();
+
+            System.out.println("📐 Total percentage of all columns: " + totalPercentageOfAllColumns + "%");
 
             double totalWeightedScore = 0.0;
             double totalPercentageOfGradedItems = 0.0;
             int gradedItemsCount = 0;
 
-            System.out.println("📏 === GRADE BREAKDOWN ===");
+            System.out.println("🔍 === GRADE BREAKDOWN ===");
 
             // Calculate weighted score for each grade column
             for (GradeColumn column : columns) {
@@ -263,15 +270,20 @@ public class GradeServiceImpl implements GradeService {
                 System.out.println("📋 " + column.getName() + " (" + columnPercentage + "%):");
 
                 if (grade != null && grade >= 0) {
-                    // FIXED CALCULATION: Proper weighted scoring
-                    double weightContribution = (grade * columnPercentage) / 100.0;
+                    // FIXED: Normalize weight if total > 100%
+                    double normalizedWeight = totalPercentageOfAllColumns > 100.0
+                            ? (columnPercentage / totalPercentageOfAllColumns) * 100.0
+                            : columnPercentage;
+
+                    double weightContribution = (grade * normalizedWeight) / 100.0;
 
                     totalWeightedScore += weightContribution;
-                    totalPercentageOfGradedItems += columnPercentage;
+                    totalPercentageOfGradedItems += normalizedWeight;
                     gradedItemsCount++;
 
-                    System.out.println("   ✅ Grade: " + grade + " → Contribution: " +
-                            String.format("%.2f", weightContribution) + " points");
+                    System.out.println("   ✅ Grade: " + grade +
+                            " → Normalized Weight: " + String.format("%.2f", normalizedWeight) + "%" +
+                            " → Contribution: " + String.format("%.2f", weightContribution) + " points");
                 } else {
                     System.out.println("   ⚪ No grade entered (skipping)");
                 }
@@ -279,7 +291,7 @@ public class GradeServiceImpl implements GradeService {
 
             System.out.println("📊 === CALCULATION SUMMARY ===");
             System.out.println("Total weighted score: " + String.format("%.2f", totalWeightedScore));
-            System.out.println("Total percentage of graded items: " + totalPercentageOfGradedItems + "%");
+            System.out.println("Total percentage of graded items: " + String.format("%.2f", totalPercentageOfGradedItems) + "%");
             System.out.println("Number of graded items: " + gradedItemsCount);
 
             // Calculate final grade
@@ -288,16 +300,14 @@ public class GradeServiceImpl implements GradeService {
             if (totalPercentageOfGradedItems == 0) {
                 finalGrade = 0.0;
                 System.out.println("❌ No grades entered → Final: 0%");
-            } else if (totalPercentageOfGradedItems == 100.0) {
-                // All components graded - return weighted score directly
-                finalGrade = totalWeightedScore;
-                System.out.println("✅ All components graded → Final: " + String.format("%.2f", finalGrade) + "%");
             } else {
-                // CORRECTED PARTIAL GRADING LOGIC
-                // When not all components are graded, we need to scale appropriately
-                finalGrade = (totalWeightedScore / totalPercentageOfGradedItems) * 100.0;
-                System.out.println("⚖️ Partial grading (" + totalPercentageOfGradedItems + "% graded)");
-                System.out.println("   Scaled final grade: " + String.format("%.2f", finalGrade) + "%");
+                // FIXED: Always calculate as percentage of total possible
+                finalGrade = totalWeightedScore;
+                System.out.println("✅ Final grade calculation: " + String.format("%.2f", finalGrade) + "%");
+
+                if (totalPercentageOfAllColumns > 100.0) {
+                    System.out.println("⚖️ Note: Grades were normalized due to total percentage > 100%");
+                }
             }
 
             // Ensure grade is within valid bounds and round to 2 decimal places
@@ -335,7 +345,7 @@ public class GradeServiceImpl implements GradeService {
             return newRecord;
         } else if (existingRecords.size() == 1) {
             // Single record exists, return it
-            System.out.println("📝 Found existing grade record");
+            System.out.println("🔍 Found existing grade record");
             return existingRecords.get(0);
         } else {
             // Multiple records exist - merge and clean up duplicates

@@ -16,7 +16,6 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -65,12 +64,7 @@ public class FileServiceImpl implements FileService {
         fileEntity.setAccessType(fileMetadata.getAccessType());
         fileEntity.setAccessBy(fileMetadata.getAccessBy());
         fileEntity.setAccessValue(fileMetadata.getAccessValue());
-
-        // 🆕 NEW: Save recipientIds if they exist
-        if ("personal".equals(fileMetadata.getAccessType())) {
-            fileEntity.setRecipientIds(fileMetadata.getRecipientIds());
-        }
-
+        fileEntity.setRecipientIds(fileMetadata.getRecipientIds());
         File savedFile = fileRepository.save(fileEntity);
 
         return mapToResponse(savedFile);
@@ -78,6 +72,7 @@ public class FileServiceImpl implements FileService {
 
     @Override
     public List<FileResponse> getAccessibleFiles(String userId, String userRole, String userDepartment) {
+        List<File> allFiles = fileRepository.findFilesForBaseFiltering();
         List<File> files;
 
         if ("1100".equals(userRole)) { // Admin
@@ -91,25 +86,35 @@ public class FileServiceImpl implements FileService {
                     .map(Course::getId)
                     .collect(Collectors.toSet());
 
-            files = fileRepository.findFilesForBaseFiltering().stream()
+            files = allFiles.stream()
                     .filter(file -> {
                         String accessType = file.getAccessType();
+                        String accessBy = file.getAccessBy();
                         String accessValue = file.getAccessValue();
+                        List<String> recipientIds = file.getRecipientIds();
 
-                        if ("public".equals(accessType) || "lecturers".equals(accessType)) {
+                        // Check if user is specifically targeted
+                        if (recipientIds != null && recipientIds.contains(userId)) {
                             return true;
                         }
 
-                        if ("students".equals(accessType) && "Department".equals(file.getAccessBy()) && lecturerDepartments.contains(accessValue)) {
+                        // Public files
+                        if ("public".equals(accessType)) {
                             return true;
                         }
 
+                        // Files for all lecturers
+                        if ("lecturers".equals(accessType)) {
+                            return true;
+                        }
+
+                        // Files for students in lecturer's departments
+                        if ("students".equals(accessType) && "Department".equals(accessBy) && lecturerDepartments.contains(accessValue)) {
+                            return true;
+                        }
+
+                        // Files for specific courses lecturer teaches
                         if ("course".equals(accessType) && lecturerCourseIds.contains(accessValue)) {
-                            return true;
-                        }
-
-                        // 🆕 NEW: Check for personal access
-                        if ("personal".equals(accessType) && file.getRecipientIds() != null && file.getRecipientIds().contains(userId)) {
                             return true;
                         }
 
@@ -125,29 +130,35 @@ public class FileServiceImpl implements FileService {
                     .map(Course::getId)
                     .collect(Collectors.toSet());
 
-            files = fileRepository.findFilesForBaseFiltering().stream()
+            files = allFiles.stream()
                     .filter(file -> {
                         String accessType = file.getAccessType();
+                        String accessBy = file.getAccessBy();
                         String accessValue = file.getAccessValue();
+                        List<String> recipientIds = file.getRecipientIds();
 
+                        // Check if user is specifically targeted
+                        if (recipientIds != null && recipientIds.contains(userId)) {
+                            return true;
+                        }
+
+                        // Public files
                         if ("public".equals(accessType)) {
                             return true;
                         }
 
-                        if ("students".equals(accessType) && "Department".equals(file.getAccessBy()) && studentDepartments.contains(accessValue)) {
+                        // Files for students in their departments
+                        if ("students".equals(accessType) && "Department".equals(accessBy) && studentDepartments.contains(accessValue)) {
                             return true;
                         }
 
-                        if ("lecturers".equals(accessType) && "Department".equals(file.getAccessBy()) && studentDepartments.contains(accessValue)) {
+                        // Files for lecturers in their departments (students can see these too)
+                        if ("lecturers".equals(accessType) && "Department".equals(accessBy) && studentDepartments.contains(accessValue)) {
                             return true;
                         }
 
+                        // Files for specific courses student is enrolled in
                         if ("course".equals(accessType) && studentCourseIds.contains(accessValue)) {
-                            return true;
-                        }
-
-                        // 🆕 NEW: Check for personal access
-                        if ("personal".equals(accessType) && file.getRecipientIds() != null && file.getRecipientIds().contains(userId)) {
                             return true;
                         }
 
@@ -183,7 +194,6 @@ public class FileServiceImpl implements FileService {
     }
 
     private FileResponse mapToResponse(File file) {
-        // ... (this method remains the same) ...
         return new FileResponse(
                 file.getId(),
                 file.getName(),

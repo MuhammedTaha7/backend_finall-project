@@ -21,7 +21,6 @@ public class UserMapper {
         dto.setTitle(entity.getTitle());
         dto.setUniversity(entity.getUniversity());
         dto.setBio(entity.getBio());
-        dto.setLocation(entity.getLocation());
         dto.setWebsite(entity.getWebsite());
         dto.setSocialLinks(entity.getSocialLinks());
         dto.setCreatedAt(entity.getCreatedAt());
@@ -44,7 +43,6 @@ public class UserMapper {
         entity.setTitle(dto.getTitle());
         entity.setUniversity(dto.getUniversity());
         entity.setBio(dto.getBio());
-        entity.setLocation(dto.getLocation());
         entity.setWebsite(dto.getWebsite());
         entity.setSocialLinks(dto.getSocialLinks());
         entity.setCreatedAt(dto.getCreatedAt());

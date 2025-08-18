@@ -10,7 +10,8 @@ import java.util.Map;
 public interface UsersService {
     UserDto getUserProfile(String userId);
     UserDto updateProfile(UpdateProfileRequest request, String userId);
-    List<UserDto> searchUsers(String query);
     Map<String, String> uploadAvatar(MultipartFile file, String userId);
     void reportUser(String reportedUserId, ReportRequest request, String reporterId);
+    List<UserDto> searchUsers(String query, String currentUserId); // 🆕 Add currentUserId to the method signature
+
 }

@@ -1,21 +1,27 @@
 package com.example.backend.eduSphere.service.impl;
 
-import com.example.backend.eduSphere.dto.request.AdminCreateUserRequest;
-import com.example.backend.eduSphere.dto.response.LoginResponse;
-import com.example.backend.eduSphere.repository.UserRepository;
-import com.example.backend.eduSphere.entity.UserEntity;
-import com.example.backend.eduSphere.dto.request.LoginRequest;
-import com.example.backend.eduSphere.dto.request.RegisterRequest;
 import com.example.backend.common.exceptions.BadRequestException;
 import com.example.backend.common.security.JwtUtil;
+import com.example.backend.eduSphere.dto.request.AdminCreateUserRequest;
+import com.example.backend.eduSphere.dto.request.LoginRequest;
+import com.example.backend.eduSphere.dto.request.RegisterRequest;
+import com.example.backend.eduSphere.dto.response.LecturerProfileDto;
+import com.example.backend.eduSphere.dto.response.LoginResponse;
+import com.example.backend.eduSphere.dto.response.StudentProfileDto;
+import com.example.backend.eduSphere.entity.UserEntity;
+import com.example.backend.eduSphere.repository.UserRepository;
 import com.example.backend.eduSphere.service.MailService;
 import com.example.backend.eduSphere.service.UserService;
 import lombok.AllArgsConstructor;
 import lombok.NonNull;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -84,13 +90,6 @@ public class UserServiceImpl implements UserService {
         return userRepository.findByRole(role);
     }
 
-    /**
-     * --- ADDED THIS METHOD ---
-     * Implementation for finding users by a list of IDs.
-     * It uses the findAllById method provided by MongoRepository.
-     * @param userIds A list of user IDs.
-     * @return A list of matching users.
-     */
     @Override
     public List<UserEntity> findUsersByIds(List<String> userIds) {
         return userRepository.findAllById(userIds);
@@ -122,12 +121,11 @@ public class UserServiceImpl implements UserService {
         newUser.setRole(request.getRole());
         newUser.setPhoneNumber(request.getPhoneNumber());
 
-        // 🆕 New conditional logic for setting fields based on role
-        if ("1300".equals(request.getRole())) { // Student
+        if ("1300".equals(request.getRole())) {
             newUser.setDepartment(request.getDepartment());
             newUser.setAcademicYear(request.getAcademicYear());
             newUser.setStatus(request.getStatus());
-        } else if ("1200".equals(request.getRole())) { // Lecturer
+        } else if ("1200".equals(request.getRole())) {
             newUser.setDepartment(request.getDepartment());
             newUser.setSpecialization(request.getSpecialization());
             newUser.setEmploymentType(request.getEmploymentType());
@@ -159,12 +157,11 @@ public class UserServiceImpl implements UserService {
         user.setRole(request.getRole());
         user.setPhoneNumber(request.getPhoneNumber());
 
-        // Conditional logic to update fields based on role
-        if ("1300".equals(request.getRole())) { // Student
+        if ("1300".equals(request.getRole())) {
             user.setDepartment(request.getDepartment());
             user.setAcademicYear(request.getAcademicYear());
             user.setStatus(request.getStatus());
-        } else if ("1200".equals(request.getRole())) { // Lecturer
+        } else if ("1200".equals(request.getRole())) {
             user.setDepartment(request.getDepartment());
             user.setSpecialization(request.getSpecialization());
             user.setEmploymentType(request.getEmploymentType());
@@ -178,5 +175,11 @@ public class UserServiceImpl implements UserService {
     public UserEntity getUserByUsername(String username) {
         return userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found with username: " + username));
+    }
+
+    @Override
+    public UserEntity findByUsername(String authName) {
+        return userRepository.findByUsername(authName)
+                .orElseThrow(() -> new RuntimeException("User not found with username: " + authName));
     }
 }

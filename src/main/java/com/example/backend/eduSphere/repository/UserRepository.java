@@ -25,4 +25,7 @@ public interface UserRepository extends MongoRepository<UserEntity, String> {
     // Alternative if university filtering isn't working:
     @Query("{'_id': {$nin: ?0}}")
     List<UserEntity> findByIdNotIn(List<String> excludeIds);
+
+    List<UserEntity> findByNameContainingIgnoreCase(String name);
+
 }

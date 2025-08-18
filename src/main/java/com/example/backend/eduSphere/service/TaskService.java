@@ -1,4 +1,3 @@
-
 package com.example.backend.eduSphere.service;
 
 import com.example.backend.eduSphere.dto.request.TaskCreateRequest;
@@ -13,61 +12,172 @@ import java.util.Optional;
 
 public interface TaskService {
 
-    // CRUD operations
+    // ====================================
+    // BASIC TASK CRUD OPERATIONS
+    // ====================================
+
+    /**
+     * Create a new task
+     */
     TaskResponse createTask(TaskCreateRequest request, String instructorId);
 
+    /**
+     * Update an existing task
+     */
     TaskResponse updateTask(String taskId, TaskUpdateRequest request, String instructorId);
 
+    /**
+     * Delete a task
+     */
     void deleteTask(String taskId, String instructorId);
 
+    /**
+     * Get a task by ID
+     */
     Optional<TaskResponse> getTaskById(String taskId);
 
+    /**
+     * Get detailed task information
+     */
     TaskDetailResponse getTaskDetails(String taskId, String instructorId);
 
-    // Query operations
+    // ====================================
+    // TASK RETRIEVAL METHODS
+    // ====================================
+
+    /**
+     * Get all tasks for a course
+     */
     List<TaskResponse> getTasksByCourse(String courseId);
 
+    /**
+     * Get tasks for a course with pagination
+     */
     Page<TaskResponse> getTasksByCourse(String courseId, Pageable pageable);
 
-    List<TaskResponse> getTasksByInstructor(String instructorId);
-
+    /**
+     * Get tasks by status
+     */
     List<TaskResponse> getTasksByStatus(String courseId, String status);
 
-    List<TaskResponse> getOverdueTasks(String courseId);
-
-    List<TaskResponse> getUpcomingTasks(String courseId, int daysAhead);
-
-    List<TaskResponse> searchTasks(String courseId, String searchTerm);
-
+    /**
+     * Get tasks by category
+     */
     List<TaskResponse> getTasksByCategory(String courseId, String category);
 
+    /**
+     * Get tasks by priority
+     */
     List<TaskResponse> getTasksByPriority(String courseId, String priority);
 
+    /**
+     * Get overdue tasks for a course
+     */
+    List<TaskResponse> getOverdueTasks(String courseId);
+
+    /**
+     * Get upcoming tasks for a course
+     */
+    List<TaskResponse> getUpcomingTasks(String courseId, int daysAhead);
+
+    /**
+     * Get tasks needing grading
+     */
     List<TaskResponse> getTasksNeedingGrading(String courseId);
 
-    // Student-facing operations
+    /**
+     * Get tasks by instructor
+     */
+    List<TaskResponse> getTasksByInstructor(String instructorId);
+
+    /**
+     * Get available tasks for students (visible and published)
+     */
     List<TaskResponse> getAvailableTasksForStudents(String courseId);
 
-    // Statistics and analytics
-    TaskDetailResponse.TaskStatistics getTaskStatistics(String taskId);
+    /**
+     * Search tasks by title or description
+     */
+    List<TaskResponse> searchTasks(String courseId, String searchTerm);
 
-    // File operations
-    TaskResponse attachFileToTask(String taskId, String fileUrl, String fileName, Long fileSize, String instructorId);
+    // ====================================
+    // STUDENT-SPECIFIC METHODS
+    // ====================================
 
-    void removeFileFromTask(String taskId, String instructorId);
+    /**
+     * Get tasks for a specific student in a course
+     * Only returns visible and published tasks
+     */
+    List<TaskResponse> getTasksForStudent(String studentId, String courseId, String status);
 
-    // Batch operations
-    void updateTaskVisibility(String courseId, List<String> taskIds, boolean visible, String instructorId);
+    /**
+     * Get overdue tasks for a specific student
+     */
+    List<TaskResponse> getOverdueTasksForStudent(String studentId, String courseId);
 
-    void updateTaskStatus(String courseId, List<String> taskIds, String status, String instructorId);
+    /**
+     * Get upcoming tasks for a specific student
+     */
+    List<TaskResponse> getUpcomingTasksForStudent(String studentId, String courseId, int daysAhead);
 
-    // Validation
+    // ====================================
+    // PERMISSION AND ACCESS CONTROL
+    // ====================================
+
+    /**
+     * Check if user can access a task
+     */
     boolean canUserAccessTask(String taskId, String userId, String userRole);
 
+    /**
+     * Check if user can modify a task
+     */
     boolean canUserModifyTask(String taskId, String userId, String userRole);
 
-    // Statistics calculation
+    // ====================================
+    // TASK STATISTICS AND ANALYTICS
+    // ====================================
+
+    /**
+     * Get task statistics
+     */
+    TaskDetailResponse.TaskStatistics getTaskStatistics(String taskId);
+
+    /**
+     * Recalculate task statistics
+     */
     void recalculateTaskStatistics(String taskId);
 
+    /**
+     * Recalculate all task statistics for a course
+     */
     void recalculateAllTaskStatisticsForCourse(String courseId);
+
+    // ====================================
+    // FILE MANAGEMENT
+    // ====================================
+
+    /**
+     * Attach file to task
+     */
+    TaskResponse attachFileToTask(String taskId, String fileUrl, String fileName, Long fileSize, String instructorId);
+
+    /**
+     * Remove file from task
+     */
+    void removeFileFromTask(String taskId, String instructorId);
+
+    // ====================================
+    // BATCH OPERATIONS
+    // ====================================
+
+    /**
+     * Update visibility for multiple tasks
+     */
+    void updateTaskVisibility(String courseId, List<String> taskIds, boolean visible, String instructorId);
+
+    /**
+     * Update status for multiple tasks
+     */
+    void updateTaskStatus(String courseId, List<String> taskIds, String status, String instructorId);
 }

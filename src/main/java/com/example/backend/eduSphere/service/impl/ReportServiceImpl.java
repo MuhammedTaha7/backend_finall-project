@@ -2,16 +2,27 @@ package com.example.backend.eduSphere.service.impl;
 
 import com.example.backend.eduSphere.dto.request.GenerateReportRequest;
 import com.example.backend.eduSphere.dto.response.GenerateReportResponse;
+import com.example.backend.eduSphere.entity.Report;
 import com.example.backend.eduSphere.service.OpenAiService;
 import com.example.backend.eduSphere.service.ReportService;
 import lombok.RequiredArgsConstructor;
 import org.bson.Document;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.BasicQuery;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Service;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.StringReader;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -22,51 +33,145 @@ public class ReportServiceImpl implements ReportService {
 
     @Override
     public GenerateReportResponse generateReport(GenerateReportRequest request) {
-
-        System.out.println("➡️ Received request from frontend: " + request.getQuery());
-
+        // ... (existing generateReport logic)
         String userQuery = request.getQuery();
 
-        // 🧠 Step 1: Get MongoDB-like query string from GPT
-        String mongoQueryString = openAiService.generateMongoQuery(userQuery);
-        System.out.println("Generated MongoDB Query from GPT:\n" + mongoQueryString);
-
         try {
-            Document responseDoc = Document.parse(mongoQueryString.trim());
-
-            Document filter = responseDoc.containsKey("filter")
-                    ? (Document) responseDoc.get("filter")
-                    : responseDoc;
-
-            BasicQuery query = new BasicQuery(filter);
-
-            if (responseDoc.containsKey("sort")) {
-                Document sortDoc = (Document) responseDoc.get("sort");
-                sortDoc.forEach((field, direction) -> {
-                    int dir = (int) direction;
-                    query.with(org.springframework.data.domain.Sort.by(
-                            dir == -1 ? org.springframework.data.domain.Sort.Direction.DESC : org.springframework.data.domain.Sort.Direction.ASC,
-                            field
-                    ));
-                });
+            String gptResponse = openAiService.generateMongoQuery(userQuery);
+            Document queryDoc = Document.parse(gptResponse.trim());
+            String collectionName = queryDoc.getString("collection");
+            if (collectionName == null || collectionName.isEmpty()) {
+                return GenerateReportResponse.builder().data(List.of()).build();
             }
 
-            if (responseDoc.containsKey("limit")) {
-                int limit = responseDoc.getInteger("limit", 0);
-                if (limit > 0) {
-                    query.limit(limit);
+            Document filter = queryDoc.get("filter", Document.class);
+            if (filter == null) {
+                filter = new Document();
+            }
+            Query mongoQuery = new BasicQuery(filter);
+
+            if (queryDoc.containsKey("sort")) {
+                Document sortDoc = queryDoc.get("sort", Document.class);
+                if (sortDoc != null) {
+                    sortDoc.forEach((field, direction) -> {
+                        int dir = direction instanceof Integer ? (Integer) direction : 1;
+                        mongoQuery.with(Sort.by(
+                                dir == -1 ? Sort.Direction.DESC : Sort.Direction.ASC,
+                                field
+                        ));
+                    });
                 }
             }
 
-            List<Map> results = mongoTemplate.find(query, Map.class, "users");
+            if (queryDoc.containsKey("limit")) {
+                Integer limit = queryDoc.getInteger("limit");
+                if (limit != null && limit > 0) {
+                    mongoQuery.limit(limit);
+                }
+            }
+
+            if (queryDoc.containsKey("fields")) {
+                List<?> fieldsObject = queryDoc.get("fields", List.class);
+                if (fieldsObject != null && !fieldsObject.isEmpty()) {
+                    List<String> fields = fieldsObject.stream()
+                            .map(Object::toString)
+                            .collect(Collectors.toList());
+                    for (String field : fields) {
+                        mongoQuery.fields().include(field);
+                    }
+                }
+            }
+
+            List<Map> results = mongoTemplate.find(mongoQuery, Map.class, collectionName);
+
+            if ("users".equals(collectionName)) {
+                results.forEach(result -> result.remove("password"));
+            }
+
+            String csvData = convertToCsvString(results);
+            Report report = Report.builder()
+                    .query(userQuery)
+                    .generatedDate(LocalDateTime.now())
+                    .collectionName(collectionName)
+                    .recordCount(results.size())
+                    .reportData(csvData)
+                    .build();
+
+            mongoTemplate.save(report);
 
             return GenerateReportResponse.builder()
                     .data((List<Map<String, Object>>)(List<?>) results)
                     .build();
 
         } catch (Exception e) {
-            System.out.println("❌ Failed to parse GPT response: " + e.getMessage());
+            e.printStackTrace();
             return GenerateReportResponse.builder().data(List.of()).build();
         }
+    }
+
+    @Override
+    public List<Report> getRecentReports() {
+        Query query = new Query().limit(10).with(Sort.by(Sort.Direction.DESC, "generatedDate"));
+        return mongoTemplate.find(query, Report.class);
+    }
+
+    @Override
+    public void deleteReport(String id) {
+        mongoTemplate.remove(Query.query(Criteria.where("id").is(id)), Report.class);
+    }
+
+    @Override
+    public List<Map<String, Object>> getReportData(String id) {
+        Report report = mongoTemplate.findById(id, Report.class);
+        if (report == null || report.getReportData() == null) {
+            return null;
+        }
+        return convertCsvToMaps(report.getReportData());
+    }
+
+    private String convertToCsvString(List<Map> data) {
+        if (data == null || data.isEmpty()) {
+            return "";
+        }
+        List<String> headers = (List<String>) data.get(0).keySet().stream().map(Object::toString).collect(Collectors.toList());
+        StringBuilder csvBuilder = new StringBuilder();
+        csvBuilder.append(String.join(",", headers)).append("\n");
+        for (Map<String, Object> row : data) {
+            String rowString = headers.stream()
+                    .map(key -> {
+                        Object value = row.get(key);
+                        String stringValue = (value == null) ? "" : value.toString();
+                        if (stringValue.contains(",") || stringValue.contains("\"")) {
+                            return "\"" + stringValue.replace("\"", "\"\"") + "\"";
+                        }
+                        return stringValue;
+                    })
+                    .collect(Collectors.joining(","));
+            csvBuilder.append(rowString).append("\n");
+        }
+        return csvBuilder.toString();
+    }
+
+    private List<Map<String, Object>> convertCsvToMaps(String csvData) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        try (BufferedReader reader = new BufferedReader(new StringReader(csvData))) {
+            String headerLine = reader.readLine();
+            if (headerLine == null) {
+                return result;
+            }
+            String[] headers = headerLine.split(",");
+            String dataLine;
+            while ((dataLine = reader.readLine()) != null) {
+                String[] values = dataLine.split(",");
+                Map<String, Object> row = new HashMap<>();
+                for (int i = 0; i < headers.length && i < values.length; i++) {
+                    row.put(headers[i], values[i]);
+                }
+                result.add(row);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return result;
     }
 }

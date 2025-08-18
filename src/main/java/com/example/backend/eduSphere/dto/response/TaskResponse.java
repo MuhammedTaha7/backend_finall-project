@@ -64,6 +64,19 @@ public class TaskResponse {
     private List<String> prerequisiteTasks;
     private Integer progress;
 
+    // Student-specific fields (used when returning tasks for students)
+    private Boolean hasSubmission;
+    private String submissionId;
+    private Integer submissionGrade;
+    private String submissionStatus;
+    private LocalDateTime submittedAt;
+    private String submissionFeedback;
+    private Boolean isLateSubmission;
+    private Boolean canSubmit;
+    private Long hoursUntilDue;
+    private Boolean overdue;
+    private Long hoursOverdue;
+
     // Timestamps
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -124,6 +137,18 @@ public class TaskResponse {
         // Timestamps
         response.setCreatedAt(task.getCreatedAt());
         response.setUpdatedAt(task.getUpdatedAt());
+
+        // Initialize student-specific fields as null/false
+        response.setHasSubmission(false);
+        response.setSubmissionId(null);
+        response.setSubmissionGrade(null);
+        response.setSubmissionStatus(null);
+        response.setSubmittedAt(null);
+        response.setSubmissionFeedback(null);
+        response.setIsLateSubmission(false);
+        response.setCanSubmit(false);
+        response.setHoursUntilDue(null);
+        response.setHoursOverdue(null);
 
         return response;
     }

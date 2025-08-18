@@ -26,9 +26,6 @@ public interface TaskRepository extends MongoRepository<Task, String> {
     // Find tasks by status
     List<Task> findByCourseIdAndStatusOrderByDueDateAsc(String courseId, String status);
 
-    // Find active tasks
-
-
     // Find tasks due soon (within next X days)
     @Query("{ 'courseId': ?0, 'dueDate': { $gte: ?1, $lte: ?2 }, 'status': 'active' }")
     List<Task> findByCourseIdAndDueDateBetweenAndStatusActive(String courseId, LocalDate startDate, LocalDate endDate);
@@ -149,4 +146,109 @@ public interface TaskRepository extends MongoRepository<Task, String> {
     // Individual tasks
     @Query("{ 'courseId': ?0, 'category': 'individual' }")
     List<Task> findIndividualTasks(String courseId);
+
+    // NEW METHODS FOR ENHANCED FUNCTIONALITY
+
+    // Find all tasks ordered by due date for student dashboard
+    List<Task> findAllByOrderByDueDateAsc();
+
+    // Find tasks available for students with all filters
+    @Query("{ 'visibleToStudents': true, 'status': 'active', " +
+            "$or: [ " +
+            "  { 'publishDate': { $exists: false } }, " +
+            "  { 'publishDate': null }, " +
+            "  { 'publishDate': { $lte: ?0 } } " +
+            "] }")
+    List<Task> findAllVisibleTasksForStudents(LocalDateTime currentTime);
+
+    // Find tasks by status and visibility for students
+    @Query("{ 'courseId': ?0, 'status': ?1, 'visibleToStudents': true, " +
+            "$or: [ " +
+            "  { 'publishDate': { $exists: false } }, " +
+            "  { 'publishDate': null }, " +
+            "  { 'publishDate': { $lte: ?2 } } " +
+            "] }")
+    List<Task> findTasksByStatusForStudents(String courseId, String status, LocalDateTime currentTime);
+
+    // Find tasks due between dates for student view
+    @Query("{ 'visibleToStudents': true, 'status': 'active', " +
+            "'dueDateTime': { $gte: ?0, $lte: ?1 }, " +
+            "$or: [ " +
+            "  { 'publishDate': { $exists: false } }, " +
+            "  { 'publishDate': null }, " +
+            "  { 'publishDate': { $lte: ?2 } } " +
+            "] }")
+    List<Task> findTasksDueBetweenForStudents(LocalDateTime startDate, LocalDateTime endDate, LocalDateTime currentTime);
+
+    // Find overdue tasks visible to students
+    @Query("{ 'visibleToStudents': true, 'status': 'active', " +
+            "'dueDateTime': { $lt: ?0 }, " +
+            "$or: [ " +
+            "  { 'publishDate': { $exists: false } }, " +
+            "  { 'publishDate': null }, " +
+            "  { 'publishDate': { $lte: ?0 } } " +
+            "] }")
+    List<Task> findOverdueTasksForStudents(LocalDateTime currentTime);
+
+    // Find upcoming tasks for students
+    @Query("{ 'visibleToStudents': true, 'status': 'active', " +
+            "'dueDateTime': { $gte: ?0, $lte: ?1 }, " +
+            "$or: [ " +
+            "  { 'publishDate': { $exists: false } }, " +
+            "  { 'publishDate': null }, " +
+            "  { 'publishDate': { $lte: ?0 } } " +
+            "] }")
+    List<Task> findUpcomingTasksForStudents(LocalDateTime currentTime, LocalDateTime endTime);
+
+    // Find tasks by category for students
+    @Query("{ 'courseId': ?0, 'category': ?1, 'visibleToStudents': true, 'status': 'active', " +
+            "$or: [ " +
+            "  { 'publishDate': { $exists: false } }, " +
+            "  { 'publishDate': null }, " +
+            "  { 'publishDate': { $lte: ?2 } } " +
+            "] }")
+    List<Task> findTasksByCategoryForStudents(String courseId, String category, LocalDateTime currentTime);
+
+    // Find tasks by priority for students
+    @Query("{ 'courseId': ?0, 'priority': ?1, 'visibleToStudents': true, 'status': 'active', " +
+            "$or: [ " +
+            "  { 'publishDate': { $exists: false } }, " +
+            "  { 'publishDate': null }, " +
+            "  { 'publishDate': { $lte: ?2 } } " +
+            "] }")
+    List<Task> findTasksByPriorityForStudents(String courseId, String priority, LocalDateTime currentTime);
+
+    // Search tasks for students
+    @Query("{ 'courseId': ?0, 'visibleToStudents': true, 'status': 'active', " +
+            "$or: [ " +
+            "  { 'title': { $regex: ?1, $options: 'i' } }, " +
+            "  { 'description': { $regex: ?1, $options: 'i' } } " +
+            "], " +
+            "$or: [ " +
+            "  { 'publishDate': { $exists: false } }, " +
+            "  { 'publishDate': null }, " +
+            "  { 'publishDate': { $lte: ?2 } } " +
+            "] }")
+    List<Task> searchTasksForStudents(String courseId, String searchTerm, LocalDateTime currentTime);
+
+    // Find tasks that allow submissions
+    @Query("{ 'courseId': ?0, 'allowSubmissions': true, 'visibleToStudents': true, 'status': 'active' }")
+    List<Task> findTasksAllowingSubmissions(String courseId);
+
+    // Find tasks with late submission penalties
+    @Query("{ 'courseId': ?0, 'latePenaltyPerDay': { $gt: 0 } }")
+    List<Task> findTasksWithLatePenalties(String courseId);
+
+    // Find tasks with attempt limits
+    @Query("{ 'courseId': ?0, 'maxAttempts': { $gt: 0 } }")
+    List<Task> findTasksWithAttemptLimits(String courseId);
+
+    // Find tasks by type for students
+    @Query("{ 'courseId': ?0, 'type': ?1, 'visibleToStudents': true, 'status': 'active', " +
+            "$or: [ " +
+            "  { 'publishDate': { $exists: false } }, " +
+            "  { 'publishDate': null }, " +
+            "  { 'publishDate': { $lte: ?2 } } " +
+            "] }")
+    List<Task> findTasksByTypeForStudents(String courseId, String type, LocalDateTime currentTime);
 }

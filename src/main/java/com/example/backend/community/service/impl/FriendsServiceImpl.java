@@ -46,7 +46,6 @@ public class FriendsServiceImpl implements FriendsService {
 
     @Override
     public List<UserDto> getFriends(String userId) {
-        System.out.println("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" + userId);
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -79,9 +78,7 @@ public class FriendsServiceImpl implements FriendsService {
 
         List<String> finalExcludeIds = excludeIds;
         List<UserEntity> suggestions = allUsers.stream()
-                .filter(u -> !finalExcludeIds.contains(u.getId()) &&
-                        user.getUniversity() != null &&
-                        user.getUniversity().equals(u.getUniversity()))
+                .filter(u -> !finalExcludeIds.contains(u.getId()))
                 .collect(Collectors.toList());
 
         return suggestions.stream()

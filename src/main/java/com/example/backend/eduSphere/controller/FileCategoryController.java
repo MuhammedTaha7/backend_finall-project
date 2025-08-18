@@ -1,66 +1,54 @@
 package com.example.backend.eduSphere.controller;
 
-import com.example.backend.eduSphere.dto.request.CreateCategoryRequest;
-import com.example.backend.eduSphere.entity.FileCategory;
-import com.example.backend.eduSphere.service.CourseContentService;
-import org.springframework.http.HttpStatus;
+import com.example.backend.eduSphere.dto.request.FileUploadRequest;
+import com.example.backend.eduSphere.dto.response.FileResponse;
+import com.example.backend.eduSphere.entity.UserEntity;
+import com.example.backend.eduSphere.service.FileService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/categories")
-@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
+@RequestMapping("/api/files")
 public class FileCategoryController {
 
-    private final CourseContentService courseContentService;
+    @Autowired
+    private FileService fileService;
 
-    public FileCategoryController(CourseContentService courseContentService) {
-        this.courseContentService = courseContentService;
+    @PostMapping("/upload")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    public ResponseEntity<FileResponse> uploadFile(@RequestParam("file") MultipartFile file,
+                                                   @ModelAttribute FileUploadRequest fileMetadata,
+                                                   @AuthenticationPrincipal UserDetails userDetails) {
+        UserEntity currentUser = (UserEntity) userDetails;
+        FileResponse newFile = fileService.uploadFileWithMetadata(file, fileMetadata, currentUser.getId(), currentUser.getName());
+        return ResponseEntity.ok(newFile);
     }
 
-    /**
-     * POST /api/categories : Create a new file category.
-     * The courseId must be set in the request body.
-     */
-    @PostMapping
-    public ResponseEntity<FileCategory> createCategory(
-            @RequestParam String courseId,
-            @RequestParam int year,
-            @RequestBody CreateCategoryRequest request
-    ) {
-        FileCategory createdCategory = courseContentService.createCategory(courseId, year, request);
-        return new ResponseEntity<>(createdCategory, HttpStatus.CREATED);
+    @GetMapping
+    public ResponseEntity<List<FileResponse>> getFiles(@AuthenticationPrincipal UserDetails userDetails) {
+        UserEntity currentUser = (UserEntity) userDetails;
+        List<FileResponse> files = fileService.getAccessibleFiles(currentUser.getId(), currentUser.getRole(), null); // Pass null for userDepartment
+        return ResponseEntity.ok(files);
     }
 
-    /**
-     * GET /api/categories/by-course/{courseId} : Get all categories for a specific course.
-     */
-    @GetMapping("/by-course/{courseId}")
-    public ResponseEntity<List<FileCategory>> getCategoriesByCourse(
-            @PathVariable String courseId,
-            @RequestParam int year // This captures the "?year=2024" part of the URL
-    ) {
-        List<FileCategory> categories = courseContentService.getCategoriesByCourse(courseId, year);
-        return ResponseEntity.ok(categories);
+    @GetMapping("/{id}")
+    public ResponseEntity<FileResponse> getFileMetadata(@PathVariable String id) {
+        FileResponse fileMetadata = fileService.getFileMetadata(id);
+        return ResponseEntity.ok(fileMetadata);
     }
 
-    /**
-     * PUT /api/categories/{categoryId} : Update an existing category.
-     */
-    @PutMapping("/{categoryId}")
-    public ResponseEntity<FileCategory> updateCategory(@PathVariable String categoryId, @RequestBody FileCategory categoryDetails) {
-        FileCategory updatedCategory = courseContentService.updateCategory(categoryId, categoryDetails);
-        return ResponseEntity.ok(updatedCategory);
-    }
-
-    /**
-     * DELETE /api/categories/{categoryId} : Delete a category and all its files.
-     */
-    @DeleteMapping("/{categoryId}")
-    public ResponseEntity<Void> deleteCategory(@PathVariable String categoryId) {
-        courseContentService.deleteCategory(categoryId);
-        return ResponseEntity.noContent().build(); // Standard practice for a successful delete
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    public ResponseEntity<Void> deleteFile(@PathVariable String id, @AuthenticationPrincipal UserDetails userDetails) {
+        UserEntity currentUser = (UserEntity) userDetails;
+        fileService.deleteFile(id, currentUser.getId(), currentUser.getRole());
+        return ResponseEntity.noContent().build();
     }
 }

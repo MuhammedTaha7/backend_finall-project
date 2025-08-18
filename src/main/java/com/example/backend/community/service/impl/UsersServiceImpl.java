@@ -42,7 +42,6 @@ public class UsersServiceImpl implements UsersService {
         user.setName(request.getName());
         user.setTitle(request.getTitle());
         user.setBio(request.getBio());
-        user.setLocation(request.getLocation());
         user.setWebsite(request.getWebsite());
         user.setCoverPic(request.getCoverPic());
 
@@ -57,14 +56,16 @@ public class UsersServiceImpl implements UsersService {
     }
 
     @Override
-    public List<UserDto> searchUsers(String query) {
-        List<UserEntity> users = userRepository.findByNameContainingIgnoreCaseOrUsernameContainingIgnoreCase(
-                query, query);
+    public List<UserDto> searchUsers(String query, String currentUserId) { // 🆕 Updated method signature
+        List<UserEntity> foundUsers = userRepository.findByNameContainingIgnoreCase(query);
 
-        return users.stream()
-                .limit(20) // Limit search results
+        List<UserDto> userDtos = foundUsers.stream()
+                // The currentUserId is now a parameter, so the code is correct
+                .filter(user -> !user.getId().equals(currentUserId))
                 .map(userMapper::toDto)
                 .collect(Collectors.toList());
+
+        return userDtos;
     }
 
     @Override

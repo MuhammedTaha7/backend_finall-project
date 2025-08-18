@@ -1,9 +1,9 @@
 package com.example.backend.eduSphere.service.impl;
 
+import com.example.backend.eduSphere.dto.request.CourseRequestDto;
 import com.example.backend.eduSphere.dto.request.EnrollmentRequest;
-import com.example.backend.eduSphere.dto.response.AssignmentResponse;
-import com.example.backend.eduSphere.dto.response.CourseDetailsResponse;
-import com.example.backend.eduSphere.dto.response.CourseSummaryResponse;
+import com.example.backend.eduSphere.dto.request.EnrollmentRequestDto;
+import com.example.backend.eduSphere.dto.response.*;
 import com.example.backend.eduSphere.entity.Assignment;
 import com.example.backend.eduSphere.entity.Course;
 import com.example.backend.eduSphere.entity.UserEntity;
@@ -12,14 +12,13 @@ import com.example.backend.eduSphere.repository.AssignmentRepository;
 import com.example.backend.eduSphere.repository.CourseRepository;
 import com.example.backend.eduSphere.repository.UserRepository;
 import com.example.backend.eduSphere.service.CourseService;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -199,10 +198,23 @@ public class CourseServiceImpl implements CourseService {
         CourseDetailsResponse responseDTO = CourseDetailsResponse.fromEntity(course);
 
         // Fetch the lecturer's name (if lecturerId exists)
-        if (course.getLecturerId() != null) {
-            userRepository.findById(course.getLecturerId()).ifPresent(lecturer -> {
+        if (course.getLecturerId() != null && !course.getLecturerId().trim().isEmpty()) {
+
+            Optional<UserEntity> lecturerOptional = userRepository.findById(course.getLecturerId());
+            if (lecturerOptional.isPresent()) {
+                UserEntity lecturer = lecturerOptional.get();
                 responseDTO.setLecturerName(lecturer.getName());
-            });
+                responseDTO.setInstructorName(lecturer.getName()); // Set both fields that frontend expects
+                responseDTO.setLecturer(lecturer); // You can set the full lecturer object or just basic info
+            } else {
+                responseDTO.setLecturerName("Lecturer Not Found");
+                responseDTO.setInstructorName("Lecturer Not Found");
+                responseDTO.setLecturer(null);
+            }
+        } else {
+            responseDTO.setLecturerName("No Lecturer Assigned");
+            responseDTO.setInstructorName("No Lecturer Assigned");
+            responseDTO.setLecturer(null);
         }
 
         // Fetch all assignments for this course
@@ -214,4 +226,257 @@ public class CourseServiceImpl implements CourseService {
 
         return responseDTO;
     }
+
+    /**
+     * Finds all courses a student is enrolled in and maps them to EnrollmentResponseDto.
+     */
+    @Override
+    public List<EnrollmentResponseDto> getStudentEnrollments(String studentId) {
+        List<Course> enrolledCourses = courseRepository.findByEnrollments_StudentIds(studentId);
+
+        return enrolledCourses.stream()
+                .map(course -> {
+                    // Find the enrollment year for this student
+                    Optional<YearlyEnrollment> studentEnrollment = course.getEnrollments().stream()
+                            .filter(ye -> ye.getStudentIds().contains(studentId))
+                            .findFirst();
+
+                    // Get lecturer name - fixed version
+                    String lecturerName = course.getLecturerId() != null ?
+                            userRepository.findById(course.getLecturerId())
+                                    .map(UserEntity::getName)
+                                    .orElse("Not Assigned") :
+                            "Not Assigned";
+
+                    return studentEnrollment.map(ye -> {
+                        EnrollmentResponseDto dto = new EnrollmentResponseDto();
+                        dto.setId(course.getId());
+                        dto.setStudentId(studentId);
+                        dto.setCourseId(course.getId());
+                        dto.setCourseCode(course.getCode());
+                        dto.setCourseName(course.getName());
+                        dto.setCredits(course.getCredits());
+                        dto.setSemester(course.getSemester());
+                        dto.setAcademicYear(ye.getAcademicYear());
+                        dto.setLecturer(lecturerName);
+                        dto.setStatus("enrolled");
+                        return dto;
+                    }).orElse(null);
+                })
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public EnrollmentResponseDto addStudentEnrollment(EnrollmentRequestDto enrollmentDto) {
+        Course course = courseRepository.findById(enrollmentDto.getCourseId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found"));
+
+        // Check if student is already enrolled
+        boolean isEnrolled = course.getEnrollments().stream()
+                .anyMatch(ye -> ye.getStudentIds().contains(enrollmentDto.getStudentId()));
+
+        if (isEnrolled) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Student is already enrolled in this course");
+        }
+
+        // Add student to the first enrollment year, or create a new one
+        YearlyEnrollment currentYearEnrollment = course.getEnrollments().stream()
+                .filter(ye -> ye.getAcademicYear() == 2025) // Assuming current year for simplicity
+                .findFirst()
+                .orElseGet(() -> {
+                    YearlyEnrollment newEnrollment = new YearlyEnrollment(2025);
+                    course.getEnrollments().add(newEnrollment);
+                    return newEnrollment;
+                });
+
+        currentYearEnrollment.getStudentIds().add(enrollmentDto.getStudentId());
+
+        Course updatedCourse = courseRepository.save(course);
+
+        // Fetch lecturer name
+        String lecturerName = "Not Assigned";
+        if (updatedCourse.getLecturerId() != null) {
+            UserEntity lecturer = userRepository.findById(updatedCourse.getLecturerId()).orElse(null);
+            if (lecturer != null) {
+                lecturerName = lecturer.getName();
+            }
+        }
+
+        EnrollmentResponseDto responseDto = new EnrollmentResponseDto();
+        responseDto.setId(updatedCourse.getId());
+        responseDto.setStudentId(enrollmentDto.getStudentId());
+        responseDto.setCourseId(updatedCourse.getId());
+        responseDto.setCourseCode(updatedCourse.getCode());
+        responseDto.setCourseName(updatedCourse.getName());
+        responseDto.setCredits(updatedCourse.getCredits());
+        responseDto.setSemester(updatedCourse.getSemester());
+        responseDto.setLecturer(lecturerName);
+        responseDto.setStatus("enrolled"); // Assuming new enrollment is 'enrolled'
+
+        return responseDto;
+    }
+
+    @Override
+    public EnrollmentResponseDto updateStudentEnrollment(String courseId, EnrollmentRequestDto enrollmentDto) {
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found"));
+
+        // Check if the student is actually enrolled
+        boolean isEnrolled = course.getEnrollments().stream()
+                .anyMatch(ye -> ye.getStudentIds().contains(enrollmentDto.getStudentId()));
+
+        if (!isEnrolled) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Student is not enrolled in this course");
+        }
+
+        // In this implementation, a PUT request would likely change the enrollment status.
+        // As your current `YearlyEnrollment` entity only tracks student IDs and not status,
+        // we'll simply return the enrollment, assuming the frontend handles the status display.
+        // We can add a more robust status field to the entity later if needed.
+
+        // For now, we'll just return the updated DTO
+        // We'll need to fetch the lecturer name to return a complete DTO
+        String lecturerName = "Not Assigned";
+        if (course.getLecturerId() != null) {
+            UserEntity lecturer = userRepository.findById(course.getLecturerId()).orElse(null);
+            if (lecturer != null) {
+                lecturerName = lecturer.getName();
+            }
+        }
+
+        EnrollmentResponseDto responseDto = new EnrollmentResponseDto();
+        responseDto.setId(course.getId());
+        responseDto.setStudentId(enrollmentDto.getStudentId());
+        responseDto.setCourseId(course.getId());
+        responseDto.setCourseCode(course.getCode());
+        responseDto.setCourseName(course.getName());
+        responseDto.setCredits(course.getCredits());
+        responseDto.setSemester(course.getSemester());
+        responseDto.setLecturer(lecturerName);
+        responseDto.setStatus(enrollmentDto.getStatus());
+
+        return responseDto;
+    }
+
+    /**
+     * Finds all courses assigned to a specific lecturer.
+     */
+    @Override
+    public List<CourseResponseDto> getLecturerCourses(String lecturerId) {
+        List<Course> lecturerCourses = courseRepository.findByLecturerId(lecturerId);
+
+        if (lecturerCourses.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return lecturerCourses.stream()
+                .map(course -> {
+                    CourseResponseDto dto = new CourseResponseDto();
+                    dto.setId(course.getId());
+                    dto.setCourseCode(course.getCode());
+                    dto.setCourseName(course.getName());
+                    dto.setCredits(course.getCredits());
+                    dto.setSemester(course.getSemester());
+                    dto.setDepartment(course.getDepartment());
+
+                    // Calculate class size from the list of enrollments
+                    Integer classSize = course.getEnrollments().stream()
+                            .flatMap(ye -> ye.getStudentIds().stream())
+                            .distinct()
+                            .collect(Collectors.toList())
+                            .size();
+                    dto.setClassSize(classSize);
+
+                    // A simple way to determine status based on the current year
+                    String status = (course.getYear() != null && course.getYear().equals(2025)) ? "Active" : "Archived";
+                    dto.setStatus(status);
+
+                    return dto;
+                })
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Assigns an existing course to a lecturer.
+     */
+    @Override
+    public CourseResponseDto assignCourseToLecturer(CourseRequestDto courseDto) {
+        Course course = courseRepository.findById(courseDto.getCourseId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found"));
+
+        if (course.getLecturerId() != null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Course is already assigned to a lecturer");
+        }
+
+        course.setLecturerId(courseDto.getLecturerId());
+        course.setSemester(courseDto.getSemester());
+        // You can update other fields from the DTO if needed
+        Course updatedCourse = courseRepository.save(course);
+
+        // Map the updated course to a DTO and return
+        CourseResponseDto responseDto = new CourseResponseDto();
+        responseDto.setId(updatedCourse.getId());
+        responseDto.setCourseCode(updatedCourse.getCode());
+        responseDto.setCourseName(updatedCourse.getName());
+        responseDto.setCredits(updatedCourse.getCredits());
+        responseDto.setSemester(updatedCourse.getSemester());
+        responseDto.setDepartment(updatedCourse.getDepartment());
+        responseDto.setClassSize(0); // A newly assigned course has no students yet
+        responseDto.setStatus("Active");
+
+        return responseDto;
+    }
+
+    /**
+     * Updates an existing course that is assigned to a lecturer.
+     */
+    @Override
+    public CourseResponseDto updateLecturerCourse(String courseId, CourseRequestDto courseDto) {
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found"));
+
+        // Only update fields that can be changed
+        if (courseDto.getSemester() != null) {
+            course.setSemester(courseDto.getSemester());
+        }
+
+        Course updatedCourse = courseRepository.save(course);
+
+        // Map the updated course to a DTO
+        CourseResponseDto responseDto = new CourseResponseDto();
+        responseDto.setId(updatedCourse.getId());
+        responseDto.setCourseCode(updatedCourse.getCode());
+        responseDto.setCourseName(updatedCourse.getName());
+        responseDto.setCredits(updatedCourse.getCredits());
+        responseDto.setSemester(updatedCourse.getSemester());
+        responseDto.setDepartment(updatedCourse.getDepartment());
+
+        Integer classSize = updatedCourse.getEnrollments().stream()
+                .flatMap(ye -> ye.getStudentIds().stream())
+                .distinct()
+                .collect(Collectors.toList())
+                .size();
+        responseDto.setClassSize(classSize);
+        responseDto.setStatus("Active");
+
+        return responseDto;
+    }
+
+    /**
+     * Unassigns a course from a lecturer by clearing the lecturerId field.
+     */
+    @Override
+    public void unassignCourseFromLecturer(String courseId, String lecturerId) {
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found"));
+
+        if (!lecturerId.equals(course.getLecturerId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Course is not assigned to this lecturer");
+        }
+
+        course.setLecturerId(null);
+        courseRepository.save(course);
+    }
+
 }

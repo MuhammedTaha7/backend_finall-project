@@ -35,6 +35,7 @@ public class UserEntity implements UserDetails {
     private String password;
     private String name;
     private String role; // "1300" (student), "1200" (lecturer), "1100" (admin)
+    private String dateOfBirth;
 
     // ----------------------
     // General Profile Information
@@ -44,7 +45,6 @@ public class UserEntity implements UserDetails {
     private String title;
     private String university;
     private String bio;
-    private String location;
     private String website;
     private String phoneNumber; // 🆕 Added to all users
     private Map<String, String> socialLinks; // 🆕 Social links for all users

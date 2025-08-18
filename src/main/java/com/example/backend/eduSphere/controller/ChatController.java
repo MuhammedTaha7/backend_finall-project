@@ -9,6 +9,14 @@ import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 
+import com.example.backend.eduSphere.dto.request.ChatRequest;
+import com.example.backend.eduSphere.dto.response.ChatResponse;
+import com.example.backend.eduSphere.service.ChatService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -17,6 +25,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/chat")
 @CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
+@RequiredArgsConstructor
 public class ChatController {
 
     @Autowired
@@ -24,6 +33,19 @@ public class ChatController {
 
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
+
+    private final ChatService chatService;
+
+    /**
+     * New method for the chatbot API. Handles requests from the chat UI.
+     * @param request The user's message.
+     * @return A ResponseEntity containing the bot's response.
+     */
+    @PostMapping
+    public ResponseEntity<ChatResponse> getBotResponse(@RequestBody ChatRequest request) {
+        String botResponse = chatService.getBotResponse(request.getMessage());
+        return ResponseEntity.ok(ChatResponse.builder().response(botResponse).build());
+    }
 
     // TEST ENDPOINT
     @GetMapping("/test")

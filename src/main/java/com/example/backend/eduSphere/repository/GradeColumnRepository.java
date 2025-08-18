@@ -11,141 +11,52 @@ import java.util.Optional;
 @Repository
 public interface GradeColumnRepository extends MongoRepository<GradeColumn, String> {
 
-    /**
-     * Find all grade columns for a specific course
-     */
+    // Find by course
     List<GradeColumn> findByCourseId(String courseId);
-
-    /**
-     * ✅ FIXED: Method that GradeServiceImpl is looking for (line 30)
-     * Find all active grade columns for a specific course
-     */
     List<GradeColumn> findByCourseIdAndIsActiveTrue(String courseId);
-
-    /**
-     * Find all active grade columns for a specific course, ordered by display order
-     */
-    List<GradeColumn> findByCourseIdAndIsActiveTrueOrderByDisplayOrderAsc(String courseId);
-
-    /**
-     * ✅ FIXED: Method that GradeServiceImpl is looking for (line 62)
-     * Find all grade columns for a course ordered by display order
-     */
     List<GradeColumn> findByCourseIdOrderByDisplayOrderAsc(String courseId);
+    List<GradeColumn> findByCourseIdOrderByDisplayOrderDesc(String courseId);
 
-    /**
-     * Find grade column by course ID and linked assignment ID
-     */
+    // Find linked assignment columns
     Optional<GradeColumn> findByCourseIdAndLinkedAssignmentId(String courseId, String linkedAssignmentId);
-
-    /**
-     * Find all auto-created grade columns for a course
-     */
-    List<GradeColumn> findByCourseIdAndAutoCreatedTrue(String courseId);
-
-    /**
-     * Find all manually created grade columns for a course
-     */
-    @Query("{ 'courseId': ?0, '$or': [{ 'autoCreated': false }, { 'autoCreated': null }] }")
-    List<GradeColumn> findByCourseIdAndManuallyCreated(String courseId);
-
-    /**
-     * Find grade column by name and course ID (case-insensitive)
-     */
-    @Query("{ 'courseId': ?0, 'name': { $regex: ?1, $options: 'i' } }")
-    Optional<GradeColumn> findByCourseIdAndNameIgnoreCase(String courseId, String name);
-
-    /**
-     * Find all grade columns for a course by type
-     */
-    List<GradeColumn> findByCourseIdAndType(String courseId, String type);
-
-    /**
-     * Check if a grade column exists for a specific assignment
-     */
-    boolean existsByCourseIdAndLinkedAssignmentId(String courseId, String linkedAssignmentId);
-
-    /**
-     * Find all grade columns created by a specific instructor
-     */
-    List<GradeColumn> findByCreatedBy(String instructorId);
-
-    /**
-     * Count total grade columns for a course
-     */
-    long countByCourseId(String courseId);
-
-    /**
-     * Count auto-created grade columns for a course
-     */
-    long countByCourseIdAndAutoCreatedTrue(String courseId);
-
-    /**
-     * Get sum of all percentages for a course
-     */
-    @Query(value = "{ 'courseId': ?0, 'isActive': true }", fields = "{ 'percentage': 1 }")
-    List<GradeColumn> findActiveByCourseIdWithPercentageOnly(String courseId);
-
-    /**
-     * Find grade columns that exceed max display order for a course
-     */
-    @Query("{ 'courseId': ?0, 'displayOrder': { $gte': ?1 } }")
-    List<GradeColumn> findByCourseIdAndDisplayOrderGreaterThanEqual(String courseId, int displayOrder);
-
-    /**
-     * Find orphaned grade columns (linked to non-existent assignments)
-     * This would require a more complex query or service-level logic
-     */
+    List<GradeColumn> findAllByCourseIdAndLinkedAssignmentId(String courseId, String linkedAssignmentId);
+    List<GradeColumn> findByLinkedAssignmentIdIsNotNull();
     List<GradeColumn> findByCourseIdAndLinkedAssignmentIdIsNotNull(String courseId);
 
-    /**
-     * Custom query to find grade columns that might be duplicates
-     */
-    @Query("{ 'courseId': ?0, 'name': { $regex: ?1, $options: 'i' }, '_id': { $ne: ?2 } }")
-    List<GradeColumn> findPotentialDuplicates(String courseId, String name, String excludeId);
+    // Find auto-created columns
+    List<GradeColumn> findByAutoCreatedTrue();
+    List<GradeColumn> findByCourseIdAndAutoCreatedTrue(String courseId);
 
-    /**
-     * Delete all grade columns for a course (cleanup method)
-     */
-    void deleteByCourseId(String courseId);
+    // Find by type
+    List<GradeColumn> findByCourseIdAndType(String courseId, String type);
 
-    /**
-     * Delete all auto-created grade columns for a course
-     */
-    void deleteByCourseIdAndAutoCreatedTrue(String courseId);
+    // Find by creation method
+    List<GradeColumn> findByCourseIdAndCreatedBy(String courseId, String createdBy);
 
-    /**
-     * Find next available display order for a course
-     */
-    @Query(value = "{ 'courseId': ?0 }", sort = "{ 'displayOrder': -1 }")
-    Optional<GradeColumn> findTopByCourseIdOrderByDisplayOrderDesc(String courseId);
+    // Custom queries for validation
+    @Query("{ 'courseId': ?0, 'isActive': true }")
+    List<GradeColumn> findActiveByCourse(String courseId);
 
-    // ✅ ADDITIONAL: Useful methods for grade management
+    @Query("{ 'courseId': ?0, 'linkedAssignmentId': { $exists: true, $ne: null } }")
+    List<GradeColumn> findLinkedColumnsByCourse(String courseId);
 
-    /**
-     * Find all grade columns for a course ordered by creation date
-     */
-    List<GradeColumn> findByCourseIdOrderByCreatedAtAsc(String courseId);
+    @Query("{ 'courseId': ?0, 'linkedAssignmentId': { $exists: false } }")
+    List<GradeColumn> findManualColumnsByCourse(String courseId);
 
-    /**
-     * Find active grade columns by course and type
-     */
-    List<GradeColumn> findByCourseIdAndIsActiveTrueAndType(String courseId, String type);
+    // Check if column exists for assignment
+    boolean existsByCourseIdAndLinkedAssignmentId(String courseId, String linkedAssignmentId);
 
-    /**
-     * Count active grade columns for a course
-     */
+    // Find orphaned columns (linked to non-existent assignments)
+    @Query("{ 'linkedAssignmentId': { $exists: true, $ne: null }, 'linkedAssignmentId': { $nin: ?0 } }")
+    List<GradeColumn> findOrphanedLinkedColumns(List<String> existingAssignmentIds);
+
+    // Delete by linked assignment
+    void deleteByLinkedAssignmentId(String linkedAssignmentId);
+    void deleteByCourseIdAndLinkedAssignmentId(String courseId, String linkedAssignmentId);
+
+    // Count methods
+    long countByCourseId(String courseId);
     long countByCourseIdAndIsActiveTrue(String courseId);
+    long countByCourseIdAndAutoCreatedTrue(String courseId);
 
-    /**
-     * Find grade columns with percentage greater than specified value
-     */
-    @Query("{ 'courseId': ?0, 'percentage': { $gt: ?1 } }")
-    List<GradeColumn> findByCourseIdAndPercentageGreaterThan(String courseId, double percentage);
-
-    /**
-     * Find all grade columns excluding a specific ID
-     */
-    @Query("{ 'courseId': ?0, '_id': { $ne: ?1 } }")
-    List<GradeColumn> findByCourseIdExcludingId(String courseId, String excludeId);
 }

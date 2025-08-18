@@ -14,6 +14,7 @@ public class AdminCreateUserRequest {
     private String email;
     private String role;
     private String phoneNumber;
+    private String dateOfBirth;
 
     // for student
     private String department;
