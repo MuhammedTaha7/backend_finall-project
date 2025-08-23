@@ -22,4 +22,6 @@ public interface CourseRepository extends MongoRepository<Course, String> {
 
     // Finds all courses taught by a specific lecturer in a specific department
     List<Course> findByLecturerIdAndDepartment(String lecturerId, String department);
+
+    List<Course> findByIdIn(List<String> courseIds);
 }

@@ -35,7 +35,6 @@ public class CalendarController {
         return ResponseEntity.ok(events);
     }
 
-    // ✅ ADD THIS ENTIRE METHOD
     @PostMapping("/events")
     public ResponseEntity<Event> createEvent(@RequestBody Event event) {
         Event createdEvent = calendarService.createEvent(event);

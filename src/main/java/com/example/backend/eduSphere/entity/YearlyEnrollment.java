@@ -13,4 +13,8 @@ public class YearlyEnrollment {
     public YearlyEnrollment(int academicYear) {
         this.academicYear = academicYear;
     }
+
+    public int academicYear() {
+        return this.academicYear;
+    }
 }

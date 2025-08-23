@@ -60,7 +60,6 @@ public class TemplateController {
     }
 
     @PostMapping("/{id}/use")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<Void> useTemplate(@PathVariable String id, @RequestBody UseTemplateRequest request, @AuthenticationPrincipal UserDetails userDetails) {
         UserEntity currentUser = (UserEntity) userDetails;
         templateService.useTemplate(id, request, currentUser.getId(), currentUser.getName());

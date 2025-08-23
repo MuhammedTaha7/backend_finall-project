@@ -8,7 +8,7 @@ import lombok.AllArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class AdminCreateUserRequest {
-
+private String id;
     // common
     private String name;
     private String email;

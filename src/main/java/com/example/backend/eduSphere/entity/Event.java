@@ -15,7 +15,7 @@ public class Event {
 
     @Id
     private String id;
-
+    private String year;
     private String title;
     private String description;
     private String type; // "LECTURE", "LAB", etc.

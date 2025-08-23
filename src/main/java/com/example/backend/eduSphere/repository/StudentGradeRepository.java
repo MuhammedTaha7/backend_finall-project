@@ -42,4 +42,21 @@ public interface StudentGradeRepository extends MongoRepository<StudentGrade, St
      */
     @Query("{ 'studentId': ?0, 'courseId': ?1 }")
     List<StudentGrade> findAllByStudentIdAndCourseId(String studentId, String courseId);
+
+    /**
+     * Find all grades with non-null final grades (for GPA calculations)
+     * Added for dashboard GPA calculations
+     */
+    @Query("{ 'finalGrade': { $ne: null } }")
+    List<StudentGrade> findAllWithFinalGrades();
+
+    /**
+     * Find grades by student IDs (useful for bulk operations)
+     */
+    List<StudentGrade> findByStudentIdIn(List<String> studentIds);
+
+    /**
+     * Find grades by course IDs (useful for bulk operations)
+     */
+    List<StudentGrade> findByCourseIdIn(List<String> courseIds);
 }
