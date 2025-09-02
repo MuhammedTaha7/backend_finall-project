@@ -1,3 +1,4 @@
+// common/src/main/java/com/example/common/security/JwtRequestFilter.java
 package com.example.common.security;
 
 import com.example.common.entity.UserEntity;
@@ -11,7 +12,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -30,46 +30,36 @@ public class JwtRequestFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
 
-        String jwt = null;
+        String token = null;
         String username = null;
 
-        // Try to extract token from Authorization header first
-        final String authorizationHeader = request.getHeader("Authorization");
-        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
-            jwt = authorizationHeader.substring(7);
-        } else {
-            // If not in header, try to extract from cookie
-            Cookie[] cookies = request.getCookies();
-            if (cookies != null) {
-                for (Cookie cookie : cookies) {
-                    if ("jwtToken".equals(cookie.getName())) {
-                        jwt = cookie.getValue();
-                        break;
-                    }
-                }
-            }
+        // 1. Check Authorization Header
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            token = authHeader.substring(7);
+        }
+        // 2. Check Query Param (for WebSocket and fallbacks)
+        else if (request.getRequestURI().startsWith("/ws")) {
+            token = request.getParameter("token");
         }
 
-        if (jwt != null) {
+        if (token != null) {
             try {
-                username = jwtUtil.extractUsername(jwt);
+                username = jwtUtil.extractUsername(token);
             } catch (Exception e) {
-                // Token is invalid or expired, proceed without authentication
+                // Invalid token
             }
-        }
 
-        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            Optional<UserEntity> userOptional = userRepository.findByUsername(username);
-
-            if (userOptional.isPresent()) {
-                UserEntity userDetails = userOptional.get();
-
-                if (jwtUtil.isTokenValid(jwt, userDetails.getUsername())) {
-                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                            userDetails, null, userDetails.getAuthorities());
-
-                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(authToken);
+            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                Optional<UserEntity> userOptional = userRepository.findByUsername(username);
+                if (userOptional.isPresent()) {
+                    UserEntity userDetails = userOptional.get();
+                    if (jwtUtil.isTokenValid(token, userDetails.getUsername())) {
+                        UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                                userDetails, null, userDetails.getAuthorities());
+                        authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                        SecurityContextHolder.getContext().setAuthentication(authToken);
+                    }
                 }
             }
         }

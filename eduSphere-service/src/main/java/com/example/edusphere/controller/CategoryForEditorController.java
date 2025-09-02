@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/categories")
-@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
+@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "false")
 public class CategoryForEditorController {
 
     private final CourseContentService courseContentService;
@@ -22,7 +22,6 @@ public class CategoryForEditorController {
 
     /**
      * POST /api/categories : Create a new file category.
-     * The courseId must be set in the request body.
      */
     @PostMapping
     public ResponseEntity<FileCategory> createCategory(

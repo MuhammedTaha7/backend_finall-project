@@ -23,7 +23,7 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/courses")
-@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
+@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "false")
 public class CourseController {
 
     private final CourseService courseService;
@@ -185,7 +185,7 @@ public class CourseController {
         return ResponseEntity.ok(updatedEnrollment);
     }
 
-    // NEW: Endpoints for Lecturer Profile Courses
+    //  Endpoints for Lecturer Profile Courses
     @GetMapping("/by-lecturer/{lecturerId}")
     @PreAuthorize("hasRole('LECTURER') or hasRole('ADMIN')")
     public ResponseEntity<List<CourseResponseDto>> getCoursesByLecturer(@PathVariable String lecturerId) {

@@ -1,7 +1,7 @@
 package com.example.community.controller;
 
 import com.example.community.service.CVService;
-import com.example.common.service.UserService; // Add this import
+import com.example.common.service.UserService;
 import com.example.community.dto.CVDto;
 import com.example.community.dto.request.SaveCVRequest;
 import com.example.community.dto.request.AIExtractRequest;
@@ -17,14 +17,14 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/cv")
-@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
+@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "false")
 public class CVController {
 
     @Autowired
     private CVService cvService;
 
     @Autowired
-    private UserService userService; // Add this
+    private UserService userService;
 
     @GetMapping
     public ResponseEntity<CVDto> getCV(Authentication authentication) {

@@ -2,7 +2,7 @@ package com.example.community.controller;
 
 import com.example.community.dto.*;
 import com.example.community.service.FriendsService;
-import com.example.common.service.UserService; // Add this import
+import com.example.common.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -12,14 +12,14 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/friends")
-@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
+@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "false")
 public class FriendsController {
 
     @Autowired
     private FriendsService friendsService;
 
     @Autowired
-    private UserService userService; // Add this
+    private UserService userService;
 
     @GetMapping
     public ResponseEntity<List<UserDto>> getFriends(Authentication authentication) {

@@ -1,7 +1,7 @@
 package com.example.community.controller;
 
 import com.example.community.service.JobsService;
-import com.example.common.service.UserService; // Add this import
+import com.example.common.service.UserService;
 import com.example.community.dto.JobDto;
 import com.example.community.dto.JobApplicationDto;
 import com.example.community.dto.request.CreateJobRequest;
@@ -17,14 +17,14 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/jobs")
-@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
+@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "false")
 public class JobsController {
 
     @Autowired
     private JobsService jobsService;
 
     @Autowired
-    private UserService userService; // Add this
+    private UserService userService;
 
     @GetMapping
     public ResponseEntity<List<JobDto>> getAllJobs(

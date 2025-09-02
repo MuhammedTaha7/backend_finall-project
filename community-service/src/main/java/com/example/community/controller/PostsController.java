@@ -2,7 +2,7 @@ package com.example.community.controller;
 
 import com.example.community.service.PostsService;
 import com.example.community.service.FriendsService;
-import com.example.common.service.UserService; // Add this import
+import com.example.common.service.UserService;
 import com.example.community.dto.PostDto;
 import com.example.community.dto.CommentDto;
 import com.example.community.dto.UserDto;
@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/community/posts")
-@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
+@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "false")
 public class PostsController {
 
     @Autowired
@@ -28,7 +28,7 @@ public class PostsController {
     private FriendsService friendsService;
 
     @Autowired
-    private UserService userService; // Add this
+    private UserService userService;
 
     @GetMapping("/feed")
     public ResponseEntity<List<PostDto>> getFeed(Authentication authentication) {
